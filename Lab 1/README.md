@@ -261,11 +261,7 @@ Take a little time to set up the wizarding set-up that allows for someone to rem
 
 \*\***Include your first attempts at recording the set-up video here.**\*\*
 
-This was our first attempt at setting up Tinkerbelle in class:
-
-<video src="Documentation/first-attempt.mp4" controls width="720"></video>
-
-_If the video is not playing, please see_: https://youtu.be/k2fl0RyPIjQ
+This was our first attempt at setting up Tinkerbelle in class: https://youtu.be/k2fl0RyPIjQ
 
 Now, change the goal within the same setting, and update the interaction with the paper prototype. 
 
@@ -312,23 +308,11 @@ Think about the setting of the device: is the environment a place where the devi
 
 \*\***Take a video of your prototyped interaction.**\*\*
 
-**Device 1:** 
+**Device 1:** https://youtube.com/shorts/qB83ggXfV4w?feature=share
 
-<video src="Documentation/device1.mp4" controls width="360"></video>
+**Device 2:** https://youtube.com/shorts/ElU2wwy-GhY?feature=share
 
-_If the video is not playing, please see_: https://youtube.com/shorts/qB83ggXfV4w?feature=share
-
-**Device 2:** 
-
-<video src="Documentation/device2.mp4" controls width="360"></video>
-
-_If the video is not playing, please see_: https://youtube.com/shorts/ElU2wwy-GhY?feature=share
-
-**Device 3:** 
-
-<video src="Documentation/device3.mp4" controls width="360"></video>
-
-_If the video is not playing, please see_: https://youtube.com/shorts/VocA4ZCp-8Q?feature=share
+**Device 3:** https://youtube.com/shorts/VocA4ZCp-8Q?feature=share
 
 \*\***Please indicate who you collaborated with on this Lab.**\*\*
 Be generous in acknowledging their contributions! And also recognizing any other influences (e.g. from YouTube, Github, Twitter) that informed your design. 
