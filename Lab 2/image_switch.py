@@ -75,7 +75,7 @@ draw.rectangle((0, 0, width, height), outline=0, fill=(0, 0, 0))
 disp.image(image)
 
 image1 = Image.open("red.jpg")
-image2 = Image.open("proj_docs/cornell.png")
+image2 = Image.open("proj_docs/Cornell.png")
 backlight = digitalio.DigitalInOut(board.D22)
 backlight.switch_to_output()
 backlight.value = True
