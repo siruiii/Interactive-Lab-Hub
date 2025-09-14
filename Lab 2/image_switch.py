@@ -20,6 +20,7 @@ import adafruit_rgb_display.hx8357 as hx8357  # pylint: disable=unused-import
 import adafruit_rgb_display.st7735 as st7735  # pylint: disable=unused-import
 import adafruit_rgb_display.ssd1351 as ssd1351  # pylint: disable=unused-import
 import adafruit_rgb_display.ssd1331 as ssd1331  # pylint: disable=unused-import
+import time
 
 # Configuration for CS and DC pins (these are PiTFT defaults):
 cs_pin = digitalio.DigitalInOut(board.D5)
@@ -74,8 +75,6 @@ draw = ImageDraw.Draw(image)
 draw.rectangle((0, 0, width, height), outline=0, fill=(0, 0, 0))
 disp.image(image)
 
-image1 = Image.open("red.jpg")
-image2 = Image.open("proj_docs/Cornell.png")
 backlight = digitalio.DigitalInOut(board.D22)
 backlight.switch_to_output()
 backlight.value = True
@@ -87,21 +86,26 @@ buttonA.switch_to_input(pull=digitalio.Pull.UP)
 buttonB.switch_to_input(pull=digitalio.Pull.UP)
 
 # Scale the image to the smaller screen dimension
-image_ratio = image.width / image.height
-screen_ratio = width / height
-if screen_ratio < image_ratio:
-    scaled_width = image.width * height // image.height
-    scaled_height = height
-else:
-    scaled_width = width
-    scaled_height = image.height * width // image.width
-image = image.resize((scaled_width, scaled_height), Image.BICUBIC)
+def load(path):
+    image = Image.open(path).convert("RGB")
+    image_ratio = image.width / image.height
+    screen_ratio = width / height
+    if screen_ratio < image_ratio:
+        scaled_width = image.width * height // image.height
+        scaled_height = height
+    else:
+        scaled_width = width
+        scaled_height = image.height * width // image.width
+    image = image.resize((scaled_width, scaled_height), Image.BICUBIC)
 
-# Crop and center the image
-x = scaled_width // 2 - width // 2
-y = scaled_height // 2 - height // 2
-image = image.crop((x, y, x + width, y + height))
+    # Crop and center the image
+    x = scaled_width // 2 - width // 2
+    y = scaled_height // 2 - height // 2
+    image = image.crop((x, y, x + width, y + height))
+    return image
 
+image1 = load("red.jpg")
+image2 = load("proj_docs/Cornell.png")
 # Display image.
 while True:
     # Buttons are active-LOW because of pull-ups
@@ -114,11 +118,12 @@ while True:
         backlight.value = True   # turn on backlight
 
     if b_pressed and not a_pressed:
-        display.fill(screenColor)               # user's color
+        disp.image(image1)           
     elif a_pressed and not b_pressed:
-        disp.image(image1)   # white
+        disp.image(image2) 
     else:
-        disp.image(image2)      # green
+        draw.rectangle((0, 0, width, height), fill=(0, 255, 0))  # Green
+        disp.image(image)
 
     time.sleep(0.02)  # small debounce / CPU break
 
