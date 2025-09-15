@@ -1,5 +1,5 @@
 # Interactive Prototyping: The Clock of Pi
-**NAMES OF COLLABORATORS HERE**
+**COLLABORATORS: Jully Li**
 
 Does it feel like time is moving strangely during this semester?
 
@@ -111,6 +111,10 @@ Install the packages from the requirements.txt and run the example script `cli_c
 The terminal should show the time, you can press `ctrl-c` to exit the script.
 If you are unfamiliar with the Python code in `cli_clock.py`, have a look at [this Python refresher](https://hackernoon.com/intermediate-python-refresher-tutorial-project-ideas-and-tips-i28s320p). If you are still concerned, please reach out to the teaching staff!
 
+☑️ working properly in terminal
+
+![cli_clock](proj_docs/cli_clock.png)
+
 
 ## Part C. 
 ### Set up your RGB Display
@@ -150,6 +154,9 @@ You can type the name of a color then press either of the buttons on the MiniPiT
 ```
 (venv) pi@raspberrypi:~/Interactive-Lab-Hub/Lab 2 $ cat screen_test.py
 ```
+☑️ Pressing one button for the color blue, the other for white, both turn of color (shown as black)
+
+![screen_test](proj_docs/screen_test.png)
 
 #### Displaying Info with Texts
 You can look in `screen_boot_script.py` for how to display text on the screen!
@@ -158,6 +165,9 @@ You can look in `screen_boot_script.py` for how to display text on the screen!
 
 You can look in `image.py` for an example of how to display an image on the screen. Can you make it switch to another image when you push one of the buttons?
 
+☑️ Source code for switching images: https://github.com/siruiii/Interactive-Lab-Hub/blob/65c94f73aa58a0ce6669841c48a95f1325833243/Lab%202/image_switch.py
+
+<img src="proj_docs/image_switch.png" alt="image_switch" width="600"/>
 
 
 ## Part D. 
@@ -184,6 +194,10 @@ Option 3. A nowadays often preferred method is to use Microsoft [VS code to remo
 
 Pro Tip: Using tools like [code-server](https://coder.com/docs/code-server/latest) you can even setup a VS Code coding environment hosted on your raspberry pi and code through a web browser on your tablet or smartphone! 
 
+☑️ `screen_clock.py` edited for displaying current time
+
+<img src="proj_docs/screen_clock.png" alt="screen_clock" width="300"/>
+
 ## Part E. Now moved to Lab2 Part 2.
 
 ## Part F. Now moved to Lab2 Part 2.
@@ -191,6 +205,17 @@ Pro Tip: Using tools like [code-server](https://coder.com/docs/code-server/lates
 ## Part G. 
 ## Sketch and brainstorm further interactions and features you would like for your clock for Part 2.
 
+**Time of Vinyl**
+
+The concept explores the intersection of time and music, using songs as a living clock. Many songs feature numbers in their titles or lyrics, and we imagine turning those numbers into markers of time. Every minute, a song's lyrics that contains the corresponding number is highlighted on the vinyl player. For example, at 08:23, the system brings up Sam Hunt’s song, showing the lyrics containing "23". During that minute, users can choose to play the track; once the minute passes, the system automatically switches to the next featured song matching the new time.
+
+To give users flexibility, the clock offers two modes:
+- Play Mode — the music for the current minute plays (Sound Output).
+- Pause Mode — the clock advances silently, simply showcasing the featured track.
+
+<img src="proj_docs/part1_sketch.png" alt="skech" width="600"/>
+
+_(Thanks to Jully for drawing the sketch!)_
 
 # Prep for Part 2
 
