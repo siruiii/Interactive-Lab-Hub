@@ -105,7 +105,7 @@ def load(path):
     return image
 
 image1 = load("red.jpg")
-image2 = load("proj_docs/Cornell.png")
+image2 = load("clock_img/04.jpg")
 # Display image.
 while True:
     # Buttons are active-LOW because of pull-ups
