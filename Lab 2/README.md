@@ -254,6 +254,8 @@ The system maintains a current_index variable (1-12) that determines which image
 - Active state, Play Mode (1-X.png): Shown when audio is currently playing
 ![1-1-12](proj_docs/1-1-12.png)
 
+*Design File:* https://www.figma.com/design/S7R1f6ORhcNgwyc6eABZxy/Vinyl-of-Time?node-id=0-1&t=3ef37x75LoWWQIjh-1
+
 ### User Interaction
 The button toggles audio playback for the current hour, which triggers the visual state change between inactive (Paused Mode) and active (Play Mode) images.
 
@@ -315,3 +317,10 @@ Press the button to play or pause the vinyl: https://youtube.com/shorts/TOd6y0HH
 ### Final Deliverable: Vinyl of Time
 https://youtu.be/PXgz67Ic3is?feature=shared 
 
+### Contribution
+Everyone on the team made equal contributions. 
+
+- *Feier Su (fs495)*: Help with UI implementation, video recording & editing  
+- *Weicong Hong (wh528)*: UI, audio file preparation, video recording & editing 
+- *Jully Li (hl2568)*: Design of the user interface, sketch
+- *Sirui Wang (sw2449)*: technical implementation, writing documentation
