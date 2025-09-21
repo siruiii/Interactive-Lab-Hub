@@ -9,14 +9,8 @@ from PIL import Image, ImageDraw, ImageFont
 import adafruit_rgb_display.st7789 as st7789
 from time import strftime
 
-
-
-
 # Initialize pygame mixer for audio
 pygame.mixer.init()
-
-
-
 
 def find_audio_file(index, audio_folder="clock_audio"):
     """Find the audio file for the given index (1-12)"""
@@ -27,9 +21,6 @@ def find_audio_file(index, audio_folder="clock_audio"):
         print(f"Warning: No audio file {index}.mp3 found in {audio_folder}")
         return None
 
-
-
-
 def play_audio(audio_file):
     """Play the audio file"""
     try:
@@ -39,23 +30,14 @@ def play_audio(audio_file):
     except pygame.error as e:
         print(f"Error playing audio: {e}")
 
-
-
-
 def stop_audio():
     """Stop the currently playing audio"""
     pygame.mixer.music.stop()
     print("Audio stopped")
 
-
-
-
 def is_audio_playing():
     """Check if audio is currently playing"""
     return pygame.mixer.music.get_busy()
-
-
-
 
 def load_and_resize_images(image_folder="clock_img", width=240, height=135):
     """Load and resize all images for the display (0-1 to 0-12 and 1-1 to 1-12)"""
@@ -78,9 +60,6 @@ def load_and_resize_images(image_folder="clock_img", width=240, height=135):
                 images[state][i] = placeholder
     
     return images
-
-
-
 
 def update_display(disp, images, current_index, is_playing, font, width, height, rotation=90):
     """Update the display with the current image and time overlay"""
@@ -106,22 +85,16 @@ def update_display(disp, images, current_index, is_playing, font, width, height,
     # Display the final image
     disp.image(image, rotation)
 
-
-
-
 # Configuration for CS and DC pins (these are FeatherWing defaults on M0/M4):
 cs_pin = digitalio.DigitalInOut(board.D5)
 dc_pin = digitalio.DigitalInOut(board.D25)
 reset_pin = None
 
-
 # Config for display baudrate (default max is 24mhz):
 BAUDRATE = 64000000
 
-
 # Setup SPI bus using hardware SPI:
 spi = board.SPI()
-
 
 # Create the ST7789 display:
 disp = st7789.ST7789(
@@ -136,26 +109,21 @@ disp = st7789.ST7789(
     y_offset=40,
 )
 
-
 # Display dimensions (swapped for landscape)
 height = disp.width  # we swap height/width to rotate it to landscape!
 width = disp.height
 rotation = 90
 
-
 # Load all images
 images = load_and_resize_images("clock_img", width, height)
 
-
 # Load font
 font = ImageFont.truetype("proj_docs/Abel-Regular.ttf", 32)
-
 
 # Turn on the backlight
 backlight = digitalio.DigitalInOut(board.D22)
 backlight.switch_to_output()
 backlight.value = True
-
 
 # Setup buttons
 buttonA = digitalio.DigitalInOut(board.D23)    # GPIO23 (PIN 16)
@@ -164,25 +132,21 @@ buttonB = digitalio.DigitalInOut(board.D24)    # GPIO24 (PIN 18)
 buttonA.switch_to_input(pull=digitalio.Pull.UP)
 buttonB.switch_to_input(pull=digitalio.Pull.UP)
 
-
 # Initial display clear
 initial_image = Image.new("RGB", (width, height))
 draw = ImageDraw.Draw(initial_image)
 draw.rectangle((0, 0, width, height), outline=0, fill=(0, 0, 0))
 disp.image(initial_image, rotation)
 
-
 # State variables
 current_index = 1  # Start with index 1 (images 0-1.png/1-1.png, audio 1.mp3)
 button_a_last_state = True  # Track previous button state for edge detection
 button_b_last_state = True  # Track button B state for edge detection
 
-
 print(f"Starting display loop. Loaded images for indices 1-12.")
 print("Press Button A to cycle through indices 1-12.")
 print("Press Button B to play/stop current index audio.")
 print(f"Starting with index {current_index}")
-
 
 while True:
     a_pressed = (buttonA.value == False)
