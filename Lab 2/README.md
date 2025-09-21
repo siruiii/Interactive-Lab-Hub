@@ -257,10 +257,12 @@ The system maintains a current_index variable (1-12) that determines which image
 ### User Interaction
 The button toggles audio playback for the current hour, which triggers the visual state change between inactive (Paused Mode) and active (Play Mode) images.
 
+<img src="proj_docs/clock_test.jpg" alt="skech" width="600"/>
+
 ### Display Updates
 - Requires importing the font: https://github.com/siruiii/Interactive-Lab-Hub/blob/f06c9da3bbf9ca44472ff6efc58b310894025726/Lab%202/proj_docs/Abel-Regular.ttf
 
-The update_display() function continuously refreshes the screen by:
+The `update_display()` function continuously refreshes the screen by:
 1. Selecting the appropriate background image based on current hour and audio state
 2. Drawing the current time (minutes and seconds) as black text overlay
 3. Rendering the final composite image to the display
@@ -307,4 +309,9 @@ As always, make sure you document contributions and ideas from others explicitly
 
 You are permitted (but not required) to work in groups and share a turn in; you are expected to make equal contribution on any group work you do, and N people's group project should look like N times the work of a single person's lab. What each person did should be explicitly documented. Make sure the page for the group turn in is linked to your Interactive Lab Hub page. 
 
+### Button Interaction
+Press the button to play or pause the vinyl: https://youtube.com/shorts/TOd6y0HH4oE?feature=share
+
+### Final Deliverable: Vinyl of Time
+https://youtu.be/PXgz67Ic3is?feature=shared 
 
