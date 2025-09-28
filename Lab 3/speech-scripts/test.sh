@@ -1,0 +1,1 @@
+echo "Hello Sirui Wang" | festival --tts
