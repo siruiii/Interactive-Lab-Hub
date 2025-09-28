@@ -1,5 +1,5 @@
 # Chatterboxes
-**NAMES OF COLLABORATORS HERE**
+**COLLABORATORS: Jully Li (hl2568), Weicong Hong (wh528), Feier Su (fs495), Sirui Wang (sw2449)**
 [![Watch the video](https://user-images.githubusercontent.com/1128669/135009222-111fe522-e6ba-46ad-b6dc-d1633d21129c.png)](https://www.youtube.com/embed/Q8FWzLMobx0?start=19)
 
 In this lab, we want you to design interaction with a speech-enabled device--something that listens and talks to you. This device can do anything *but* control lights (since we already did that in Lab 1).  First, we want you first to storyboard what you imagine the conversational interaction to be like. Then, you will use wizarding techniques to elicit examples of what people might say, ask, or respond.  We then want you to use the examples collected from at least two other people to inform the redesign of the device.
@@ -82,6 +82,12 @@ You can also play audio files directly with `aplay filename`. Try typing `aplay 
 \*\***Write your own shell file to use your favorite of these TTS engines to have your Pi greet you by name.**\*\*
 (This shell file should be saved to your own repo for this lab.)
 
+Shell file: https://github.com/siruiii/Interactive-Lab-Hub/blob/f60a190fbbe2c7a8e6154d53bfbb73955c6a41fb/Lab%203/speech-scripts/name.sh
+
+Add execute permission before run `./name.py` in speech-scripts folder
+```bash
+chmod +x name.py
+```
 ---
 Bonus:
 [Piper](https://github.com/rhasspy/piper) is another fast neural based text to speech package for raspberry pi which can be installed easily through python with:
@@ -146,6 +152,26 @@ and
 python faster_whisper_try.py
 ```
 \*\***Write your own shell file that verbally asks for a numerical based input (such as a phone number, zipcode, number of pets, etc) and records the answer the respondent provides.**\*\*
+
+Shell file: https://github.com/siruiii/Interactive-Lab-Hub/blob/f60a190fbbe2c7a8e6154d53bfbb73955c6a41fb/Lab%203/speech-scripts/zipcode.sh
+
+Download the voice files before run `./zipcode.sh` in speech-scripts folder
+```bash
+# Create voices directory if it doesn't exist
+mkdir -p ~/.local/share/piper-tts/voices/
+
+# Download the voice files
+cd ~/.local/share/piper-tts/voices/
+
+# Download both the model (.onnx) and config (.json) files
+wget https://github.com/rhasspy/piper/releases/download/2023.11.14-2/en_US-lessac-medium.onnx
+wget https://github.com/rhasspy/piper/releases/download/2023.11.14-2/en_US-lessac-medium.onnx.json
+```
+
+Play the recorded zipcode audio file `zipcode.wav`
+```bash
+aplay zipcode.wav
+```
 
 ### 🤖 NEW: AI-Powered Conversations with Ollama
 
@@ -214,6 +240,13 @@ answer = ask_ai("How should I greet users?")
 
 \*\***Try creating a simple voice interaction that combines speech recognition, Ollama processing, and text-to-speech output. Document what you built and how users responded to it.**\*\*
 
+Testing with the web app
+```bash
+export PYTHONIOENCODING=utf-8
+python3 ollama_web_app.py
+```
+![web-app-test](proj_docs/web-app-test.png)
+
 ### Serving Pages
 
 In Lab 1, we served a webpage with flask. In this lab, you may find it useful to serve a webpage for the controller on a remote device. Here is a simple example of a webserver.
@@ -240,7 +273,88 @@ Storyboard and/or use a Verplank diagram to design a speech-enabled device. (Stu
 
 Write out what you imagine the dialogue to be. Use cards, post-its, or whatever method helps you develop alternatives or group responses. 
 
+During the brainstorming process, we came up with several ideas and made storyboards for each of them:
+#### Storyboard 1 - 20 Questions game
+A verbal guessing game with the device where the user thinks of a person, place, or thing, and the device has a limit of asking 20 yes-or-no questions to guess what it is.
+<p align="center">
+  <img src="proj_docs/storyboard-1.png" alt="20 questions device storyboard" />
+</p>  
+
+#### Storyboard 2 - Interview/presentation mock
+A voice practice coach that prompts questions, times responses, and gives quick feedback on pacing, content, and clarity, aiming to help users mock upcoming interview/presentation tasks.
+<p align="center">
+  <img src="proj_docs/storyboard-2.png" alt="Interview/Presentation Mock storyboard" />
+</p>  
+
+#### Storyboard 3 - Smart doorstep assistant
+Smart Doorstep Assistant is a two-way, multimodal communicator for home entrances. detects knocks, asks visitors their purpose, and notifies the resident. It converts visitors’ spoken/typed messages into natural-sounding speech, and lets residents with voice loss reply by typing, tapping preset phrases, or choosing pictograms that are spoken aloud at the door.
+<p align="center">
+  <img src="proj_docs/storyboard-3.png" alt="Interview/Presentation Mock storyboard" />
+</p>  
+
+#### Storyboard 4 - Sleep talk logger
+Sleep Talk Logger is an overnight companion that listens and records the brief speech events while you sleep, records them, and turns them into a clean, time-stamped journal you can review in the morning. 
+<p align="center">
+  <img src="proj_docs/storyboard-4.png" alt="Sleep Talk Logger storyboard" width=400px />
+</p> 
+
+_(Images generated by ChatGPT-5)_
+
 \*\***Please describe and document your process.**\*\*
+
+After discussion, we decided go with the first idea of 20 questions game bot. Here is how we plan the game scene to be:
+
+For the 20 Questions game bot, the bot sits in a corner and invites play when someone approaches. A webcam presence check (no images stored) detects a face for ~2 seconds, then prompts: “Want to play 20 Questions? Say ‘let’s play’ or wave.” If the visitor responds, it onboards and starts; if not or they decline, it quietly returns to idle and won’t re-prompt until after a short cooldown.
+
+**Planned Dialogue:** 
+
+Note: In reality, users’ responses may vary. The script is provided only as an example of how the conversation could unfold.
+
+<details>
+<summary> <b>Dialogue Script</b> </summary> 
+
+Device: Want to play 20 Questions? Say ‘let’s play’ or wave.
+
+User: Let's play.
+ 
+Device: Think of a person. Say “ready” when you’re set.
+ 
+User: Ready.
+ 
+Device: Great! I’ll ask up to 20 yes-or-no questions. First: Is this person real?
+ 
+User: Yes.
+ 
+Device: Are they currently alive?
+ 
+User: Yes.
+ 
+Device: Are they a musician?
+ 
+User: Yes.
+ 
+Device: Are they British?
+ 
+User: No.
+ 
+Device: Are they famous for avant-garde fashion?
+ 
+User: Yes.
+ 
+Device: Have they won an Oscar for Best Original Song?
+ 
+User: Yes.
+ 
+Device: Have they released jazz albums with Tony Bennett?
+ 
+User: Yes.
+ 
+Device: I guess… Lady Gaga.
+ 
+User: Correct.
+ 
+Device: Nailed it in 7 questions! Want a rematch?
+</details>
 
 ### Acting out the dialogue
 
@@ -248,10 +362,48 @@ Find a partner, and *without sharing the script with your partner* try out the d
 
 \*\***Describe if the dialogue seemed different than what you imagined when it was acted out, and how.**\*\*
 
+**How we act out the dialogue:**
+<p align="center">
+  <a href="https://youtu.be/93-dGnLfw1I" target="_blank">
+    <img src="https://img.youtube.com/vi/93-dGnLfw1I/hqdefault.jpg" alt="Acting Out the Dialogue" width="600"/>
+  </a>
+</p>
+
+**Feedback:**
+
+Back-to-back yes or no questions worked, but without a visual/progress cue, the user couldn’t tell how far along we were (How many questions the device had asked), this felt more noticeable when spoken. In Part B, we could think about how to add a quick mid-game recap after Q4–5 (“So far: real, alive, musician, not British…” or “So far, I had asked 4 questions…”) to ground the user.
+
 ### Wizarding with the Pi (optional)
 In the [demo directory](./demo), you will find an example Wizard of Oz project. In that project, you can see how audio and sensor data is streamed from the Pi to a wizard controller that runs in the browser.  You may use this demo code as a template. By running the `app.py` script, you can see how audio and sensor data (Adafruit MPU-6050 6-DoF Accel and Gyro Sensor) is streamed from the Pi to a wizard controller that runs in the browser `http://<YouPiIPAddress>:5000`. You can control what the system says from the controller as well!
 
 \*\***Describe if the dialogue seemed different than what you imagined, or when acted out, when it was wizarded, and how.**\*\*
+
+We used the following prompt to interact with the Ollama Voice Assistant in order to act out our script:
+
+**LLM system prompt:** 
+You are a Twenty Questions bot: the user silently thinks of a person, answers only “yes” or “no,” and you ask up to 20 concise, polite, speakable questions (one question at a time) that start broad and then narrow based on their answers to identify the person within the limit (you win if you guess correctly within 20; otherwise the user wins).
+
+**How we interact with Ollama:**
+Source code: https://github.com/siruiii/Interactive-Lab-Hub/blob/f60a190fbbe2c7a8e6154d53bfbb73955c6a41fb/Lab%203/ollama/test.py
+
+We revised the `ollama_web_app.py` and tested the interaction by running `test.py` in ollama folder
+```bash
+cd ollama
+source ollama_venv/bin/activate
+python3 test.py
+```
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=MWF14AGxWc4" target="_blank">
+    <img src="https://img.youtube.com/vi/MWF14AGxWc4/hqdefault.jpg" alt="Watch the demo" width="600">
+  </a>
+</p>
+
+**Feedback & Reflection:**
+
+- Ollama struggled with processing complex prompts, and its response time did not match our expectations. In practice, this could lead to user frustration. In the testing, it required us to continually revise and simplify our prompts.
+- When testing a sample game with Ollama, the time it took to guess the correct name often exceeded 20 questions.
+
+
 
 # Lab 3 Part 2
 
