@@ -84,9 +84,9 @@ You can also play audio files directly with `aplay filename`. Try typing `aplay 
 
 Shell file: https://github.com/siruiii/Interactive-Lab-Hub/blob/f60a190fbbe2c7a8e6154d53bfbb73955c6a41fb/Lab%203/speech-scripts/name.sh
 
-Add execute permission before run `./name.py` in speech-scripts folder
+Add execute permission before run `./name.sh` in speech-scripts folder
 ```bash
-chmod +x name.py
+chmod +x name.sh
 ```
 ---
 Bonus:
