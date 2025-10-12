@@ -31,10 +31,10 @@
 
 Photos (from left to right: light/proximity, rotary encoder, joystick, distance sensor): 
 
-<img src="proj_docs/proximity.jpg" width="150"/>
-<img src="proj_docs/encoder.jpg" width="150"/>
-<img src="proj_docs/joystick.jpg" width="150"/>
-<img src="proj_docs/distance.jpg" width="150"/>
+<img src="proj_docs/proximity.jpg" width="300"/>
+<img src="proj_docs/encoder.jpg" width="300"/>
+<img src="proj_docs/joystick.jpg" width="300"/>
+<img src="proj_docs/distance.jpg" width="300"/>
 
 Terminal output:
 
