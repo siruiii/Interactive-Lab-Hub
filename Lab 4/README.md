@@ -23,14 +23,100 @@
 	- Photos/videos of your Twizzler (or other object) capacitive sensor setup
 	- Code and terminal output showing touch detection
 
+<img src="proj_docs/capacity.jpg" width="300"/>
+
 *️⃣ **B. More Sensors**
 	- Photos/videos of each sensor tested (light/proximity, rotary encoder, joystick, distance sensor)
 	- Code and terminal output for each sensor
+
+Photos (from left to right: light/proximity, rotary encoder, joystick, distance sensor): 
+
+<img src="proj_docs/proximity.jpg" width="150"/>
+<img src="proj_docs/encoder.jpg" width="150"/>
+<img src="proj_docs/joystick.jpg" width="150"/>
+<img src="proj_docs/distance.jpg" width="150"/>
+
+Terminal output:
+
+<img src="proj_docs/proximity-terminal.jpg" width="600"/>
+<img src="proj_docs/encoder-terminal.jpg" width="600"/>
+<img src="proj_docs/joystick-terminal.jpg" width="600"/>
+<img src="proj_docs/distance-terminal.jpg" width="600"/>
 
 *️⃣ **C. Physical Sensing Design**
 	- 5 sketches of different ways to use your chosen sensor
 	- Written reflection: questions raised, what to prototype
 	- Pick one design to prototype and explain why
+
+#### Rock paper scissors
+<img src="proj_docs/image8.png" width="450"/>
+
+- Sensors/Tech: Webcam + Teachable Machine (gesture classifier), optional Qwiic Button for “Ready”.
+-Interaction: Player faces the cam -> presses “Ready” (or waves) -> 3-2-1 countdown on OLED/MiniTFT -> both “throw” a hand sign; model classifies user’s gesture, Pi randomly (or rule-based) picks a move. Best-of-3 option.
+- Output: Big icon (✊ ✋ ✌️), win/lose/draw banner, score, playful beep/fanfare.
+- Form/Enclosure: Small “arcade counter” with a start button and tilted screen; vinyl icons on the faceplate for clarity.
+- Questions to prototype: Lighting robustness; latency from capture→classify→display; confusion between ✋ and ✌️; adding a fallback (button) if vision fails.
+- Why interesting: Real-time vision + game loop makes sensing legible and fun.
+
+#### Digital Plant (Shameplant)
+<img src="proj_docs/image9.png" width="450"/>
+
+- Sensors/Tech: APDS-9960 proximity/light/gesture + optional distance sensor.
+- Interaction: When a hand approaches too fast/close, the “plant” gets shy: leaves (paper/servo fins) droop and the OLED shows a bashful face; if you approach slowly or hold your hand at a kind distance, it “warms up” and perks back. Gentle left/right gestures can “pet” it.
+- Output: Servo leaf droop/raise, OLED emotions, softly pulsing LEDs for “breathing.”
+- Form/Enclosure: Paper/felt leaves on a stem; sensor hidden in the pot rim; OLED as a tiny “face tag.”
+- Questions to prototype: Thresholds for “too close” vs. “just right”; mapping speed of approach to emotion; ambient-light compensation.
+- Why interesting: Turns abstract proximity into an expressive, relatable behavior.
+
+#### Memory Conductor
+<img src="proj_docs/image15.png" width="450"/>
+
+- Sensors: Capacitive + OLED + Servo
+- Concept: Each conductive object (copper tape, Twizzler, metal trinket) stores a “memory.” When you touch it, the OLED displays a word, phrase, or animation that fades as you release — like recalling fleeting memories.
+-Interaction: Touching = recalling → fading. Multiple pads = multiple memories.
+- Output: Gentle servo motion (like a heartbeat) as memory fades away.
+- Display form: A circular base with objects (rings, shells, candy) connected by hidden wires, glowing softly when activated.
+- Notes: Memory is not stored in objects, but flows through them — just as electricity flows only when we make contact.
+
+#### Gesture DJ 
+<img src="proj_docs/image3.png" width="450"/>
+
+- Sensors: Rotary encoder + Gesture + OLED
+- Concept: Control light patterns or sound samples with hand gestures and rotation.
+- Interaction: Rotate for tempo, gesture for mode (wave left = bass, right = treble).
+- Output: OLED shows “mix levels” or dynamic shapes.
+- Form: Flat “DJ board” with one dial and invisible gesture zone.
+
+#### The Light Between Us
+<img src="proj_docs/image2.png" width="450"/>
+
+- Sensors: Distance + Gesture + OLED
+- Concept: Measures how close two people stand. The OLED shows poetic text based on proximity (“Far / Still warm / Close / Too bright”).
+-Output: Dynamic phrases or shifting brightness levels.
+- Art Message: Emotional distance visualized as light.
+- Form: Two small pods that face each other like conversation partners.
+- What does it mean when a machine senses intimacy? Does awareness of being measured change how we express closeness? In “The Light Between Us,” technology does not replace touch – it reveals its gradients.
+
+#### Written reflection
+
+***What are some things these sketches raise as questions? What do you need to physically prototype to understand how to answer those questions?***
+
+Several concerns raised after we did the sketches:
+How far away can gestures be reliably detected?
+Does the light affect accuracy?
+Does the orientation (horizontal vs. vertical) change detection sensitivity?
+How to give user feedback to show their gesture detected by the device?
+
+After physically prototyping the device, we could potentially test out:
+Detection range with different hand speeds and distances.
+Mount it in different angles and to see if they affect sensitivity.
+Test the physical prototype under different environmental conditions. 
+Prototype different feedback we could potentially give to users (maybe LED blink, OLED text, etc.)
+
+***Pick one of these designs to prototype.***
+
+Out of five ideas, we picked the Gesture DJ design to prototype. We imagine to prototype this concept by using a rotary encoder and gesture/distance sensors to let users mix music and visuals by turning knobs and waving their hands, blending physical controls with free-form motion. The combination of tangible and touchless input makes the sensing legible, while the sound and light feedback creates an expressive music experience that we can test for responsiveness, accuracy, and user enjoyment.
+
 
 *️⃣ **D. Display & Housing**
 	- 5 sketches for display/button/knob positioning
@@ -39,6 +125,50 @@
 	- Rationale for design
 	- Photos/videos of your cardboard prototype
 
+#### Sketches
+<img src="proj_docs/image1.jpg" width="450"/>
+<img src="proj_docs/image11.jpg" width="450"/>
+<img src="proj_docs/image13.jpg" width="450"/>
+<img src="proj_docs/image17.jpg" width="450"/>
+<img src="proj_docs/image18.jpg" width="450"/>
+
+#### Written reflection
+***What are some things these sketches raise as questions? What do you need to physically prototype to understand how to answer those questions?***
+
+Proximity Sensor placement and range:
+- How close does the hand need to be to the distance sensor for reliable pitch control?
+- Should the distance sensor face upward, sideways, or at an angle for the most natural interaction?
+
+Rotary encoder feel and precision:
+- How sensitive should the encoder be for controlling tempo—should it adjust smoothly or in discrete steps ( every 5 BPM)?
+- Does the knob need feedback or visual cues (like an LED ring or OLED feedback)?
+
+Sound output and enclosure design:
+- How does the speaker placement in the device affect perceived sound direction and volume when the device is on a table?
+- Is the form enclosing too much resonance (boxy sound), or does it allow clean output?
+
+Form and ergonomics:
+- Which form is most intuitive for users—flat DJ board, cylinder speaker, or compact disc-shaped base?
+- How do users naturally gesture around the sensor—above, across, or in front?
+
+User feedback / display integration:
+- Does the user need an OLED display or light bulbs showing real-time BPM and pitch shift intensity?
+- How visible should the display or light bulb be given the interaction distance?
+
+What Needs to Be Physically Prototyped
+- Sensor calibration: Test different distance sensor orientations (side vs. top) to find the most responsive zone.
+- Test Rotary encoder mapping. Prototype the tempo mapping, for example, encoder rotation to BPM to determine comfortable control range.
+- Use cardboard or foam to simulate each shape (box, turntable, cylinder, disc) and observe how users naturally interact with the sensors.
+
+#### Pick one of these display designs to integrate into your prototype
+***Explain the rationale for the design.*** (e.g. Does it need to be a certain size or form or need to be able to be seen from a certain distance?)
+
+We decided to go with the DJ turntables sketch (Sketch#1 and #3), because it is more intuitive for users to understand how to interact with the device (ex. users immediately associate the top rotary encoder with music tempo control). And also for aesthetic reasons, the circular “record” metaphor makes it more cohesive for a “Gesture DJ” concept, feeling both digital and analog.
+
+The proximity sensor sits on the top surface with a clear interaction zone, reducing accidental triggers from people standing beside the unit. The rotary encoder is top-mounted (~3 cm above) and visually prominent for quick tempo changes. A side speaker grille projects sound cleanly toward the audience without blocking hand gestures on the top.
+
+#### Build a cardboard prototype of your design.
+<img src="proj_docs/image16.jpg" width="450"/>
 ---
 
 ### Part 2 (Week 2)
@@ -55,7 +185,7 @@
 ---
 
 ## Lab Overview
-**NAMES OF COLLABORATORS HERE**
+**COLLABORATORS: Jully Li (hl2568), Weicong Hong (wh528), Feier Su (fs495), Sirui Wang (sw2449)**
 
 
 For lab this week, we focus both on sensing, to bring in new modes of input into your devices, as well as prototyping the physical look and feel of the device. You will think about the physical form the device needs to perform the sensing as well as present the display or feedback about what was sensed. 
