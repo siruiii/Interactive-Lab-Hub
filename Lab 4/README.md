@@ -19,6 +19,7 @@
 
 ### Part 1 (Week 1)
 **Submit the following for Part 1:**  
+**COLLABORATORS: Jully Li (hl2568), Weicong Hong (wh528), Feier Su (fs495), Sirui Wang (sw2449)**
 *️⃣ **A. Capacitive Sensing**
 	- Photos/videos of your Twizzler (or other object) capacitive sensor setup
 	- Code and terminal output showing touch detection
@@ -169,6 +170,7 @@ The proximity sensor sits on the top surface with a clear interaction zone, redu
 
 #### Build a cardboard prototype of your design.
 <img src="proj_docs/image16.jpg" width="450"/>
+
 ---
 
 ### Part 2 (Week 2)
@@ -177,17 +179,101 @@ The proximity sensor sits on the top surface with a clear interaction zone, redu
 	- Code and video for your multi-input multi-output demo (e.g., chaining Qwiic buttons, servo, GPIO expander, etc.)
 	- Reflection on interaction effects and chaining
 
+**Code for multi-device demo:**
+
+https://github.com/siruiii/Interactive-Lab-Hub/blob/Fall2025/Lab%204/dj.py
+
+**Photos and/or video of the working prototype in action**
+
+Working prototype photo
+
+<img src="proj_docs/demo.jpg" width="450"/>
+
+
+Working prototype video (before implementing physical UI)
+
+https://www.youtube.com/watch?v=9f7XT1SAkN0
+
+**A simple interaction diagram or sketch showing how inputs and outputs are connected and interact**
+
+<img src="proj_docs/diagram.png" width="450"/>
+
+**What did you learn about multi-input/multi-output interaction? What was fun, surprising, or challenging?**
+
+What we learned about multi-input/multi-output interaction is that coordinating multiple sensors and outputs requires careful setting-up and debugging, each component (like the rotary encoder and proximity sensor we used in this DJ device). It was surprising how sensitive the hardware setup could be. Connections on the breadboard were easy to come loose, causing unexpected behavior that looked like code errors but were actually wiring issues.
+
+What was fun was seeing how different inputs could work together to create a more dynamic and expressive experience. For example, controlling the music’s pitch and low-pass filter (audio filter that lets the low frequencies pass through, while reducing or cutting out the high frequencies) through rotation and the hand’s distance to the proximity sensor of the rotary encoder felt very rewarding.
+
+The most challenging part was debugging interactions that depended on multiple sensors updating simultaneously, especially figuring out which input was causing unexpected errors and changes in output.
+
+**What new types of interaction become possible when you combine two or more sensors or actuators?**
+
+Combining sensors like the proximity detector and rotary encoder allows both tactile precision and expressive motion control in a single experience. Users can modulate one variable through turning a knob while simultaneously influencing another through touchless gestures, creating multi-layered input. This combination enables more fluid, musical, or performative interactions that go beyond simple button presses.
+
+**How does the physical arrangement of devices (e.g., where the encoder or sensor is placed) change the user experience?**
+
+The placement of sensors and controls directly influences how intuitive and comfortable they feel. For example, positioning a sensor above the encoder encourages hand hovering and gesture-like input, while placing it on the side might suggest triggering or navigation. This setup shapes user posture and rhythm, promoting either precise, anchored control or dynamic, spatial interaction. 
+
+**What happens if you use one device to control or modulate another (e.g., encoder sets a threshold, sensor triggers an action)?**
+
+Hierarchical linking of sensors creates more complex control logic and emergent behaviors. For example, configuring the encoder to adjust the proximity sensor’s sensitivity threshold allows users to modify how reactive or “emotional” the system appears. This integration enhances adaptability and imparts a sense of personality, as if the system learns or shifts mood in response to user interactions.
+
+**How does the system feel if you swap which device is "primary" and which is "secondary"?**
+
+If the rotary encoder becomes primary, the experience feels precise and mechanical, similar to a mixing desk. But if proximity takes the lead, the interaction would feel softer and more embodied, like conducting or shaping sound in mid-air. Swapping the hierarchy fundamentally changes the perceived intent from tool operation to creative expression.
+
 *️⃣ **F. Final Documentation**
 	- Photos/videos of your final prototype
 	- Written summary: what it looks like, works like, acts like
 	- Reflection on what you learned and next steps
 
+**Physical UI:**
+
+<img src="proj_docs/3d-print.png" width="450"/>
+
+3D Model Source: Bambu Studio - Rotary Encoder Knobs by ershared
+
+**Device Inner Set-up**
+
+<img src="proj_docs/inner-setup.jpg" width="450"/>
+
+**DJ Board**
+
+<img src="proj_docs/dj-board.jpg" width="450"/>
+
+**Feedback from peers on Physical UI & general experiences with Gesture DJ’s rough prototype:**
+
+- Participant #1: “At first, it was unclear which part of the device controlled the music’s pitch, song switch, and low-pass filter, but after you explained the setup, it became intuitive to use.”
+- Participant #2: “Interesting DJ board! Would love to see more features coming up and how this could be more robust in controlling the music.”
+- Participant #3: “Love to see if we could control the song of our choice in the future.”
+
+Based on the feedback we received, we decided to add labels to the device to guide users in how to interact with it. However, due to time constraints, we chose to continue focusing on the proximity sensor and rotary encoder for this week. We also expanded the song bank to offer a wider selection of music.
+
+**Final Photo and Video Demo**
+
+Final Device:
+
+<img src="proj_docs/withlabel.jpg" width="450"/>
+
+<img src="proj_docs/withlabel2.jpg" width="450"/>
+
+
+Video Demo:
+https://youtu.be/KbzEK73YYX4?si=bayvnmF0tJXfD38B
+
+**Contribution**
+
+Everyone in the team has made equal contributions to this project.
+
+- Sirui Wang: technical implementation, Raspberry Pi setup, device testing
+- Jully Li: storyboarding, physical UI, help with the device set-up, final report write-up.
+- Feier Su: storyboarding, final report writeup, video shooting, interaction diagram
+- Weicong Hong: physical UI, 3d printing, final report writeup, video shooting
+
 ---
 
 ## Lab Overview
-**COLLABORATORS: Jully Li (hl2568), Weicong Hong (wh528), Feier Su (fs495), Sirui Wang (sw2449)**
-
-
+<details>
 For lab this week, we focus both on sensing, to bring in new modes of input into your devices, as well as prototyping the physical look and feel of the device. You will think about the physical form the device needs to perform the sensing as well as present the display or feedback about what was sensed. 
 
 ## Part 1 Lab Preparation
@@ -626,3 +712,4 @@ Document all the prototypes and iterations you have designed and worked on! Agai
 * "Works like": shows what the device can do
 * "Acts like": shows how a person would interact with the device
 
+</details>
