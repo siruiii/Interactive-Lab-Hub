@@ -273,6 +273,10 @@ No hand detection (e.g., detectionCon=0): landmarks empty most frames → volume
 
 **\*\*\*Include a short video demonstrating the answers to these questions.\*\*\***
 
+Source code: https://github.com/siruiii/Interactive-Lab-Hub/blob/4fc51543e8a3d962f654d912089122a11d45ea90/Lab%205/dj2.py
+
+Video: 
+
 ### Part 2.
 
 Following exploration and reflection from Part 1, finish building your interactive system, and demonstrate it in use with a video.
