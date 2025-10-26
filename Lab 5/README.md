@@ -1,6 +1,6 @@
 # Observant Systems
 
-**NAMES OF COLLABORATORS HERE**
+**COLLABORATORS: Jully Li (hl2568), Weicong Hong (wh528), Feier Su (fs495), Sirui Wang (sw2449)**
 
 
 For lab this week, we focus on creating interactive systems that can detect and respond to events or stimuli in the environment of the Pi, like the Boat Detector we mentioned in lecture. 
@@ -276,6 +276,8 @@ No hand detection (e.g., detectionCon=0): landmarks empty most frames → volume
 Source code: https://github.com/siruiii/Interactive-Lab-Hub/blob/4fc51543e8a3d962f654d912089122a11d45ea90/Lab%205/dj2.py
 
 Video: 
+- https://youtube.com/shorts/SH_TeEvClkg?feature=share
+- https://youtube.com/shorts/OTi3Ou8AaQY?feature=share
 
 ### Part 2.
 
