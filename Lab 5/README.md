@@ -161,6 +161,11 @@ In an earlier version of this class students experimented with foundational comp
 
 
 **\*\*\*Describe and detail the interaction, as well as your experimentation here.\*\*\***
+#### Gesture DJ 2.0
+- Concept: Use hand gestures to control music
+- Description: For this lab, we built a gesture-based sound controller using MediaPipe Hands on the Raspberry Pi. The interaction is based on using simple hand gestures to modulate sound in real time. Specifically, the pinch distance between the thumb and index finger of the hand controls music volume.
+
+In experimentation, we tested the system under different lighting, camera angles, and backgrounds to observe detection stability. The MediaPipe hand model performed well with distinct hand shapes, but lost tracking under low light or when the hand was partially out of frame.
 
 ### Part C
 ### Test the interaction prototype
@@ -168,15 +173,65 @@ In an earlier version of this class students experimented with foundational comp
 Now flight test your interactive prototype and **note down your observations**:
 For example:
 1. When does it what it is supposed to do?
-1. When does it fail?
-1. When it fails, why does it fail?
-1. Based on the behavior you have seen, what other scenarios could cause problems?
+```
+- Stable tracking with good, even lighting.
+- An entire hand being captured by the camera.
+- Single hand centered in frame.
+- Clear index–thumb pinch gesture facing the camera.
+- Slow clear movements.
+```
+2. When does it fail?
+```
+- Low light / backlighting
+- Hand partially out of frame, making pinch distance become unreliable
+- High-speed gestures
+- Multiple hands/people entering the frame, causing wrong hand selection
+- Non-stable/shaking camera
+```
+3. When it fails, why does it fail?
+```
+- Low light / backlighting: The webcam sensor struggles to detect edges and contrast when illumination is uneven; the hand becomes underexposed, causing the model to misread contours and landmark points.
+- Hand partially out of frame, making pinch distance become unreliable: The algorithm depends on seeing both fingers fully to measure pinch distance or classify a pose.
+- High-speed gestures: Rapid movement causes motion blur, making frames appear smeared.
+- Multiple hands/people entering the frame, causing wrong hand selection: When the model tries to track several candidates simultaneously, it may assign the wrong landmarks to the active user.
+- Non-stable/shaking camera: When the camera moves, the background and relative hand position both shift.
+```
+4. Based on the behavior you have seen, what other scenarios could cause problems?
+```
+- Gloves, rings, or long sleeves (partially) covering fingers.
+- Shadows casting finger-like edges.
+- Background hands/objects (posters/hand images) close to the camera field.
+- Non-frontal hand poses (e.g., thumb hidden behind palm).
+- User fatigue; lacking accessibility considerations on hand tremors or limited range of motion.
+```
 
 **\*\*\*Think about someone using the system. Describe how you think this will work.\*\*\***
 1. Are they aware of the uncertainties in the system?
-1. How bad would they be impacted by a miss classification?
-1. How could change your interactive system to address this?
-1. Are there optimizations you can try to do on your sense-making algorithm.
+```
+Users might not be fully aware of the underlying uncertainties. When the pitch suddenly jumps or the volume cuts out, they may assume they made an incorrect gesture rather than realizing that the hand-tracking model temporarily lost confidence. 
+```
+
+2. How bad would they be impacted by a miss classification?
+```
+A misclassification here is relatively low-impact, it just creates an unexpected or off-key sound rather than a critical failure. However, frequent noise, pitch spikes, or muted moments could disrupt the creative flow or make the experience feel inconsistent. 
+```
+
+3. How could change your interactive system to address this?
+```
+- State + confidence UI: On-screen overlay with per-hand confidence bars; color-code stable/unstable.
+Auditory safety rails:
+- Clamp pitch to a musical scale; glide (portamento) between notes.
+- Volume ramp (attack/release) to avoid pops when confidence drops.
+- Role locking: Explicit “Calibrate” gesture to lock which hand controls pitch/volume; show labels on-screen.
+- Accessibility mode: Larger pinch thresholds, steadier smoothing, optional dwell-based input.
+```
+
+4. Are there optimizations you can try to do on your sense-making algorithm.
+```
+- Confidence-gated pipeline: Only emit volume updates if both the hand score and the two landmark visibilities (thumb/index tips) exceed a threshold.
+- Outlier rejection + temporal smoothing
+- Non-linear mapping for better control: Map pinch distance → volume with a non-linear function
+```
 
 ### Part D
 ### Characterize your own Observant system
@@ -184,12 +239,37 @@ For example:
 Now that you have experimented with one or more of these sense-making systems **characterize their behavior**.
 During the lecture, we mentioned questions to help characterize a material:
 * What can you use X for?
+```
+- Hands-free, real-time system volume control by pinching thumb–index (maps pinch distance → 0–100%).
+- One-gesture mute: the “quiet coyote!” (mixed long/short inter-finger distances) forces volume to 0%.
+```
 * What is a good environment for X?
+```
+Even front lighting, uncluttered background, single hand centered and fully in frame.
+```
 * What is a bad environment for X?
+```
+- Low light, backlighting, or fast motion.
+- Multiple hands/people in frame, or hands partially off-screen/occluded.
+```
 * When will X break?
+```
+Input assumptions violated: Hand landmarks not returned (no hand / lost tracking) → UI keeps drawing old bar; volume stays at last value.
+```
 * When it breaks how will X break?
+```
+No hand detection (e.g., detectionCon=0): landmarks empty most frames → volume never updates, bar stays at last drawn, music continues at last set loudness.
+```
 * What are other properties/behaviors of X?
+```
+- Starts at 50% volume unconditionally (set_volume(50) at boot).
+- Linear mapping from pinch distance 50→300 px to 0→100% (no smoothing/hysteresis; can feel twitchy).
+```
 * How does X feel?
+```
+- Immediate and expressive when lighting is good and motion is moderate.
+- Occasionally surprising: mute snaps on/off when the “quiet coyote!”; volume can spike if distance briefly jumps.
+```
 
 **\*\*\*Include a short video demonstrating the answers to these questions.\*\*\***
 
