@@ -17,7 +17,7 @@ except Exception:
     HAVE_SD = False
 
 
-# --- Decode MP3 (pydub + ffmpeg preferred). WAV fallback provided. ---
+# --- Decode MP3 (pydub + ffmpeg preferred). We'll also accept WAV fallback. ---
 try:
     from pydub import AudioSegment
     HAVE_PYDUB = True
@@ -26,41 +26,37 @@ except Exception:
 
 
 # --- MediaPipe Hands ---
+# pip install mediapipe opencv-python
 import mediapipe as mp
 mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
 
 
+
+
 # =============================
-# Config (safer defaults)
+# Config (safe defaults)
 # =============================
-SAMPLE_RATE = 44100          # friendlier than 48k on many devices
-GAIN = 0.9
+SAMPLE_RATE = 44100         # 44.1k is accepted by more devices than 48k
+GAIN = 0.9                  # overall output gain (keep <1.0)
 LPF_INIT = 4000.0
-LPF_MIN, LPF_MAX = 2000.0, 9000.0
+LPF_MIN, LPF_MAX = 80.0, 9000.0     # Hz mapped from RIGHT hand Y (top=high)
 
 
-PLAYBACK_MIN, PLAYBACK_MAX = 0.85, 1.15
+# Playback rate (acts like coarse pitch/time stretch by resampling)
+# 1.0 = normal speed, >1.0 = faster & higher pitch, <1.0 = slower & lower pitch
+PLAYBACK_MIN, PLAYBACK_MAX = 0.5, 1.5
 
 
-SMOOTH_MS = 50.0
+SMOOTH_MS = 50.0     # smoothing for parameter changes (ms)
 HUD_SMOOTH = 0.2
 
 
-MUSIC_FILE = "music.mp3"
+MUSIC_FILE = "music.mp3"    # expected in same folder; can also use music.wav
+BLOCKSIZE = 1024            # safer than 0 (auto)
+CHANNELS = 2                # use stereo stream; we’ll duplicate mono to both channels
 
 
-# Adaptive calibration (expands to your reach, slowly relaxes)
-calib = {
-    "Left":  {"y_min": 1.0, "y_max": 0.0},
-    "Right": {"y_min": 1.0, "y_max": 0.0},
-}
-CALIB_DECAY = 0.002  # lets the range relax slowly over time
-
-
-# Audio stream prefs
-BLOCKSIZE = 1024
-CHANNELS = 2          # stereo stream; we duplicate mono into both channels
 
 
 # =============================
@@ -86,13 +82,15 @@ class FourPoleLPF:
         b = self.b
         z = self.z
         for i in range(x.shape[0]):
-            # cascade → ~24 dB/oct
+            # cascade of 4 one-pole filters → ~24 dB/oct
             z[0] = a * x[i] + b * z[0]
             z[1] = a * z[0] + b * z[1]
             z[2] = a * z[1] + b * z[2]
             z[3] = a * z[2] + b * z[3]
             y[i] = z[3]
         return y
+
+
 
 
 # =============================
@@ -113,29 +111,17 @@ class SharedParams:
 params = SharedParams()
 
 
+
+
 # =============================
 # Utility mapping
 # =============================
 def clamp01(x): return max(0.0, min(1.0, x))
 def lerp(a,b,t): return a + (b-a)*t
 def norm_to_range(v_norm, lo, hi): return lerp(lo, hi, clamp01(v_norm))
+def y_to_param(y_norm): return clamp01(1.0 - y_norm)  # top=1
 
 
-def y_to_param_adaptive(label, y_tip):
-    # Update running min/max with gentle decay so it doesn't lock forever
-    c = calib[label]
-    c["y_min"] = max(0.0, c["y_min"] + CALIB_DECAY)
-    c["y_max"] = min(1.0, c["y_max"] - CALIB_DECAY)
-    c["y_min"] = min(c["y_min"], y_tip)
-    c["y_max"] = max(c["y_max"], y_tip)
-
-
-    # Map fingertip to 0..1 using observed range, then invert so top=1
-    lo, hi = c["y_min"], c["y_max"]
-    if hi - lo < 1e-3:
-        return 0.5
-    v = (y_tip - lo) / (hi - lo)    # 0 at min (highest), 1 at max (lowest)
-    return clamp01(1.0 - v)
 
 
 # =============================
@@ -144,12 +130,12 @@ def y_to_param_adaptive(label, y_tip):
 class MusicPlayer:
     def __init__(self, sr=SAMPLE_RATE, music_path=MUSIC_FILE):
         self.sr = sr
-        self.pos = 0.0
+        self.pos = 0.0  # fractional index into mono buffer
         self.lpf = FourPoleLPF(sr)
 
 
-        # Resolve file / fallback
         if not os.path.exists(music_path):
+            # try WAV fallback if mp3 missing
             base, _ = os.path.splitext(music_path)
             wav_path = base + ".wav"
             if os.path.exists(wav_path):
@@ -160,7 +146,7 @@ class MusicPlayer:
                 )
 
 
-        # Try pydub (ffmpeg) for anything; fallback to wave for WAVs
+        # Try to decode with pydub first (mp3/wav/anything ffmpeg can read)
         seg = None
         if HAVE_PYDUB:
             try:
@@ -169,16 +155,15 @@ class MusicPlayer:
                 print(f"[decode] pydub failed on {music_path}: {repr(e)}")
 
 
+        # If pydub failed and it's a WAV file, try Python wave module
         if seg is None and music_path.lower().endswith(".wav"):
-            # Manual WAV path if no pydub/ffmpeg
             import wave
             with wave.open(music_path, "rb") as wf:
                 ch = wf.getnchannels()
                 sr_file = wf.getframerate()
                 nframes = wf.getnframes()
-                sampwidth = wf.getsampwidth()
                 audio_bytes = wf.readframes(nframes)
-            dtype = np.int16 if sampwidth == 2 else np.uint8
+            dtype = np.int16 if wf.getsampwidth() == 2 else np.uint8
             arr = np.frombuffer(audio_bytes, dtype=dtype).astype(np.float32)
             if ch > 1:
                 arr = arr.reshape(-1, ch).mean(axis=1)
@@ -188,12 +173,12 @@ class MusicPlayer:
                 arr /= 32768.0
             else:
                 arr /= max(1.0, np.max(np.abs(arr)))
+            # resample to target sr if needed (very simple linear)
             if sr_file != sr:
-                # simple linear resample
                 ratio = sr / float(sr_file)
-                idx = np.arange(int(len(arr) * ratio), dtype=np.float64) / ratio
+                idx = np.arange(int(len(arr)*ratio), dtype=np.float64) / ratio
                 i0 = np.floor(idx).astype(np.int64)
-                i1 = np.minimum(i0 + 1, len(arr) - 1)
+                i1 = np.minimum(i0 + 1, len(arr)-1)
                 frac = idx - i0
                 arr = (1.0 - frac) * arr[i0] + frac * arr[i1]
             self.buffer = arr.astype(np.float32)
@@ -204,24 +189,29 @@ class MusicPlayer:
 
         if seg is None:
             raise RuntimeError(
-                "Could not decode audio. Install pydub+ffmpeg for MP3/others, or provide a WAV file."
+                "Could not decode audio. Install pydub + ffmpeg for MP3, or provide a WAV file."
             )
 
 
-        # pydub path: mono, target SR, float32 [-1,1]
+        # Convert to mono, target SR, float32 numpy [-1, 1]
         seg = seg.set_channels(1).set_frame_rate(sr)
         arr = np.array(seg.get_array_of_samples()).astype(np.float32)
-        if seg.sample_width == 1:
+
+
+        # Normalize from integer sample width
+        if seg.sample_width == 1:   # 8-bit unsigned
             arr = (arr - 128.0) / 128.0
-        elif seg.sample_width == 2:
+        elif seg.sample_width == 2: # 16-bit
             arr /= 32768.0
-        elif seg.sample_width == 3:
+        elif seg.sample_width == 3: # 24-bit packed into int32 by pydub
             arr /= 2**23
-        elif seg.sample_width == 4:
+        elif seg.sample_width == 4: # 32-bit int
             arr /= 2**31
         else:
             maxv = max(1.0, np.max(np.abs(arr)))
             arr /= maxv
+
+
         self.buffer = arr.astype(np.float32)
         self.length = len(self.buffer)
         print(f"[decode] loaded via pydub: {music_path}, {self.length} samples @ {sr} Hz")
@@ -246,9 +236,9 @@ class MusicPlayer:
         self.lpf.set_cutoff(cutoff)
 
 
-        # Fractional resampling via linear interpolation
+        # Vectorized fractional resampling via linear interpolation
         idx = self.pos + rate * np.arange(frames, dtype=np.float64)
-        idx_mod = np.mod(idx, self.length - 1)
+        idx_mod = np.mod(idx, self.length - 1)  # -1 so idx+1 is valid
         i0 = np.floor(idx_mod).astype(np.int64)
         frac = idx_mod - i0
         i1 = i0 + 1
@@ -257,12 +247,16 @@ class MusicPlayer:
         out = out.astype(np.float32)
 
 
+        # advance position
         if frames > 0:
             self.pos = (idx[-1] + rate) % (self.length - 1)
 
 
+        # filter + gain
         out = self.lpf.process(out) * GAIN
         return out
+
+
 
 
 # =============================
@@ -280,10 +274,12 @@ def audio_callback(outdata, frames, time_info, status):
     if not params.running or player is None:
         outdata[:] = 0
         return
+
+
     block = player.block(frames)  # mono float32
 
 
-    # Duplicate to stereo (compatibility)
+    # Duplicate to stereo to improve device compatibility
     if outdata.shape[1] == 2:
         outdata[:, 0] = block
         outdata[:, 1] = block
@@ -291,7 +287,7 @@ def audio_callback(outdata, frames, time_info, status):
         outdata[:, 0] = block
 
 
-    # Log RMS about once per second
+    # Log RMS ~1x/sec to confirm nonzero audio
     now = time.time()
     if now - _last_log > 1.0:
         rms = float(np.sqrt(np.mean(block.astype(np.float64)**2)))
@@ -299,17 +295,23 @@ def audio_callback(outdata, frames, time_info, status):
         _last_log = now
 
 
-def start_audio(sample_rate, music_path, device_index=None):
+
+
+def start_audio(sample_rate, device_index=None):
     global audio_stream, player
     if not HAVE_SD:
         print("sounddevice not found. Audio disabled. Install with: pip install sounddevice")
         return
+
+
     try:
-        player = MusicPlayer(sample_rate, music_path)
+        player = MusicPlayer(sample_rate, MUSIC_FILE)
         print(f"[init] buffer length: {player.length} samples @ {sample_rate} Hz")
     except Exception as e:
         print("[Audio Start Error: player init]", repr(e))
         return
+
+
     try:
         if device_index is not None:
             sd.default.device = (None, device_index)  # (input, output)
@@ -320,14 +322,16 @@ def start_audio(sample_rate, music_path, device_index=None):
             channels=CHANNELS,
             dtype='float32',
             callback=audio_callback,
-            blocksize=BLOCKSIZE,   # explicit, safer
-            # latency='low'        # let backend decide
+            blocksize=BLOCKSIZE,   # safer than automatic
+            # latency='low'        # let backend choose best latency
         )
         audio_stream.start()
         print("[Audio] stream started. active =", getattr(audio_stream, "active", None))
     except Exception as e:
         print("[Audio Start Error: stream]", repr(e))
         player = None
+
+
 
 
 def stop_audio():
@@ -341,6 +345,8 @@ def stop_audio():
         audio_stream = None
 
 
+
+
 # =============================
 # HUD state
 # =============================
@@ -348,99 +354,27 @@ hud_rate = 1.0
 hud_cutoff = LPF_INIT
 
 
-# =============================
-# UI helpers
-# =============================
-BG_COLOR = (200, 220, 200)   # BGR
-FG_DARK  = (20, 20, 20)
-FG_MID   = (60, 60, 60)
-WHITE    = (245, 245, 245)
-ACCENT   = (0, 0, 0)
-
-
-def draw_centered_text(img, text, center, scale, color, thickness=2):
-    (w, h), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, scale, thickness)
-    x = int(center[0] - w/2)
-    y = int(center[1] + h/2)
-    cv2.putText(img, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, scale, color, thickness, cv2.LINE_AA)
-
-
-def draw_meter(img, x, y_top, y_bot, width, norm_value):
-    cv2.rectangle(img, (x, y_top), (x+width, y_bot), WHITE, -1, cv2.LINE_AA)
-    h = y_bot - y_top
-    filled = int(h * clamp01(norm_value))
-    cv2.rectangle(img, (x, y_bot - filled), (x+width, y_bot), ACCENT, -1, cv2.LINE_AA)
-    cv2.putText(img, "100%", (x-10, y_top-10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, FG_MID, 2, cv2.LINE_AA)
-    cv2.putText(img, "0%",   (x, y_bot+35),    cv2.FONT_HERSHEY_SIMPLEX, 0.8, FG_MID, 2, cv2.LINE_AA)
-
-
-def draw_ui(canvas, left_v, right_v, num_hands, rate, cutoff, have_sd, have_pydub, fps, audio_ok):
-    H, W = canvas.shape[:2]
-
-
-    # center help card
-    card_w, card_h = int(W*0.45), 110
-    card_x = (W - card_w) // 2
-    card_y = 40
-    cv2.rectangle(canvas, (card_x, card_y), (card_x+card_w, card_y+card_h), (235,240,235), -1, cv2.LINE_AA)
-    draw_centered_text(canvas, "How to Use", (W//2, card_y+35), 1.0, FG_DARK, 2)
-    draw_centered_text(canvas, "Left Hand: move index fingertip up/down for playback rate", (W//2, card_y+70), 0.6, FG_MID, 1)
-    draw_centered_text(canvas, "Right Hand: move index fingertip up/down for LPF cutoff", (W//2, card_y+95), 0.6, FG_MID, 1)
-
-
-    # meters
-    bar_top, bar_bot = 120, H-110
-    bar_w = 40
-    left_x = 120
-    right_x = W - 120 - bar_w
-    draw_meter(canvas, left_x, bar_top, bar_bot, bar_w, left_v)
-    draw_meter(canvas, right_x, bar_top, bar_bot, bar_w, right_v)
-
-
-    # left labels
-    draw_centered_text(canvas, "Left Hand", (left_x+bar_w+200, H//2 - 40), 1.0, FG_MID, 2)
-    draw_centered_text(canvas, f"{int(round(left_v*100))}%", (left_x+bar_w+200, H//2+10), 2.2, ACCENT, 6)
-    draw_centered_text(canvas, "Playback Rate", (left_x+bar_w+200, H//2+60), 0.9, FG_DARK, 2)
-
-
-    # right labels
-    draw_centered_text(canvas, "Right Hand", (right_x-200, H//2 - 40), 1.0, FG_MID, 2)
-    draw_centered_text(canvas, f"{int(round(right_v*100))}%", (right_x-200, H//2+10), 2.2, ACCENT, 6)
-    draw_centered_text(canvas, "Low Pass Filter", (right_x-200, H//2+60), 0.9, FG_DARK, 2)
-
-
-    # diagnostics
-    if not have_sd:
-        cv2.putText(canvas, "Audio OFF (install 'sounddevice')", (W-420, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 120, 255), 2, cv2.LINE_AA)
-    if not have_pydub:
-        cv2.putText(canvas, "MP3 decode via pydub OFF (install 'pydub' + ffmpeg or use WAV)", (W-760, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 120, 255), 2, cv2.LINE_AA)
-
-
-    if not audio_ok:
-        cv2.putText(canvas, "Audio inactive (see console)", (20, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2, cv2.LINE_AA)
-
-
-    cv2.putText(canvas, f"FPS: {int(fps)}", (W-140, H-20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (80, 80, 80), 2, cv2.LINE_AA)
 
 
 # =============================
 # Main (vision + control)
 # =============================
-def main(sample_rate, music_path, device_index=None):
+def main(sample_rate, device_index=None):
     global hud_rate, hud_cutoff
 
 
     print("=" * 60)
     print('Two-Hand DJ: LEFT hand = Playback Rate (Pitch), RIGHT hand = Low-Pass Cutoff')
-    print(' - Move LEFT index fingertip up = faster/pitch up; down = slower/pitch down')
-    print(' - Move RIGHT index fingertip up = brighter (higher cutoff)')
+    print(' - Raise LEFT hand to speed up / pitch up; lower to slow/pitch down')
+    print(' - Raise RIGHT hand to open the filter (brighter)')
     print(' - Put "music.mp3" (or "music.wav") next to this script')
     print(" - Press 'm' to mute/unmute audio, 'q' to quit")
     print("=" * 60)
 
 
+    # Start audio
     try:
-        start_audio(sample_rate, music_path, device_index)
+        start_audio(sample_rate, device_index)
     except Exception as e:
         print(f"[Audio Start Error] {e}")
 
@@ -470,66 +404,98 @@ def main(sample_rate, music_path, device_index=None):
                 break
 
 
-            # Tracking (camera not shown; we draw a custom UI instead)
             frame = cv2.flip(frame, 1)
             img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = hands.process(img_rgb)
 
 
-            # Update params from adaptive fingertip mapping
+            left_y = None
+            right_y = None
+            num_hands = 0
+
+
             if results.multi_hand_landmarks:
+                num_hands = len(results.multi_hand_landmarks)
                 for hand_lms, handed in zip(results.multi_hand_landmarks, results.multi_handedness):
-                    label = handed.classification[0].label  # "Left"/"Right"
-                    y_tip = hand_lms.landmark[8].y          # index fingertip
-                    v = y_to_param_adaptive(label, y_tip)   # 0..1
-                    with params.lock:
-                        if label == "Left":
-                            params.playback_rate = norm_to_range(v, PLAYBACK_MIN, PLAYBACK_MAX)
-                        else:
-                            params.cutoff = norm_to_range(v, LPF_MIN, LPF_MAX)
+                    label = handed.classification[0].label  # "Left" or "Right" (user POV)
+                    y_norm = hand_lms.landmark[8].y
+                    if label == "Left":
+                        left_y = y_norm
+                    elif label == "Right":
+                        right_y = y_norm
 
 
-            # HUD smoothing
+                    color = (255, 0, 255) if label == "Left" else (0, 255, 255)
+                    mp_drawing.draw_landmarks(
+                        frame, hand_lms, mp_hands.HAND_CONNECTIONS,
+                        mp_drawing.DrawingSpec(color=color, thickness=2, circle_radius=3),
+                        mp_drawing.DrawingSpec(color=color, thickness=2)
+                    )
+                    cv2.putText(frame, f"{label}",
+                                (int(hand_lms.landmark[0].x * frame.shape[1]),
+                                 int(hand_lms.landmark[0].y * frame.shape[0]) - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+
+
+            # Map to parameters
             with params.lock:
+                if left_y is not None:
+                    v = y_to_param(left_y)  # 0..1 (top=1)
+                    params.playback_rate = norm_to_range(v, PLAYBACK_MIN, PLAYBACK_MAX)
+                if right_y is not None:
+                    v = y_to_param(right_y)
+                    params.cutoff = norm_to_range(v, LPF_MIN, LPF_MAX)
+
+
+                # HUD smoothing
                 hud_rate += HUD_SMOOTH * (params.playback_rate - hud_rate)
                 hud_cutoff += HUD_SMOOTH * (params.cutoff - hud_cutoff)
 
 
-            # Build UI canvas (no camera feed)
-            H, W = 720, 1280
-            canvas = np.full((H, W, 3), BG_COLOR, dtype=np.uint8)
+            # HUD
+            h, w = frame.shape[:2]
+            cv2.rectangle(frame, (10, h-130), (w-10, h-10), (0, 0, 0), -1)
+            cv2.putText(frame, f"HANDS: {num_hands}/2", (20, 40),
+                        cv2.FONT_HERSHEY_DUPLEX, 1.0, (0, 255, 0) if num_hands == 2 else (0, 0, 255), 2)
 
 
-            left_v = clamp01((hud_rate - PLAYBACK_MIN) / (PLAYBACK_MAX - PLAYBACK_MIN))
-            right_v = clamp01((hud_cutoff - LPF_MIN) / (LPF_MAX - LPF_MIN))
-            audio_ok = (player is not None) and (audio_stream is not None) and bool(getattr(audio_stream, "active", False))
+            cv2.putText(frame, f"Playback Rate: {hud_rate:0.2f}x", (20, h-90),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
+            cv2.putText(frame, f"LPF Cutoff (Hz): {hud_cutoff:6.1f}", (20, h-50),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
 
 
-            # UI (meters + labels)
-            draw_ui(canvas, left_v, right_v, num_hands=0, rate=hud_rate, cutoff=hud_cutoff,
-                   have_sd=HAVE_SD, have_pydub=HAVE_PYDUB, fps=fps, audio_ok=audio_ok)
+            # On-screen diagnostics
+            if player is None:
+                cv2.putText(frame, "Audio not initialized (see console)", (20, 80),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+            elif audio_stream is None or not getattr(audio_stream, "active", False):
+                cv2.putText(frame, "Audio inactive (see console)", (20, 80),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
 
 
-            # Optionally overlay hand skeletons (nicely on the UI)
-            if results.multi_hand_landmarks:
-                for hand_lms, handed in zip(results.multi_hand_landmarks, results.multi_handedness):
-                    color = (255, 0, 255) if handed.classification[0].label == "Left" else (0, 255, 255)
-                    mp_drawing.draw_landmarks(
-                        canvas,
-                        hand_lms,
-                        mp_hands.HAND_CONNECTIONS,
-                        mp_drawing.DrawingSpec(color=color, thickness=2, circle_radius=3),
-                        mp_drawing.DrawingSpec(color=color, thickness=2),
-                    )
+            if not HAVE_SD:
+                cv2.putText(frame, "Audio OFF (install 'sounddevice')",
+                            (w-420, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 165, 255), 2)
+            if not HAVE_PYDUB:
+                cv2.putText(frame, "MP3 decode via pydub OFF (install 'pydub' + ffmpeg or use WAV)",
+                            (w-760, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 165, 255), 2)
 
 
-            # FPS calc
+            # FPS
             cTime = time.time()
             fps = 1.0 / (cTime - pTime) if (cTime - pTime) > 0 else fps
             pTime = cTime
+            cv2.putText(frame, f"FPS: {int(fps)}", (w-140, h-20),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 2)
 
 
-            cv2.imshow("Two-Hand DJ: Adaptive UI Controller", canvas)
+            if num_hands < 2:
+                cv2.putText(frame, 'Show BOTH hands (Left=Rate, Right=LPF)!',
+                            (int(0.15*w), 80), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
+
+
+            cv2.imshow("Two-Hand DJ: music Controller", frame)
 
 
             key = cv2.waitKey(1) & 0xFF
@@ -547,18 +513,19 @@ def main(sample_rate, music_path, device_index=None):
         cv2.destroyAllWindows()
 
 
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--sr", type=int, default=SAMPLE_RATE, help="Sample rate (try 44100 or 48000)")
-    ap.add_argument("--file", type=str, default=MUSIC_FILE, help="Audio file path (mp3/wav)")
-    ap.add_argument("--device", type=int, default=None, help="Output device index (see printed list)")
+    ap.add_argument("--device", type=int, default=None, help="Output device index (from sd.query_devices())")
     args = ap.parse_args()
 
 
     SAMPLE_RATE = args.sr
-    MUSIC_FILE = args.file
 
 
+    # Optional: print devices to help the user pick one
     if HAVE_SD:
         try:
             print("\n=== sounddevice devices ===")
@@ -568,7 +535,7 @@ if __name__ == "__main__":
             print("[device list error]", repr(e))
 
 
-    main(sample_rate=SAMPLE_RATE, music_path=MUSIC_FILE, device_index=args.device)
+    main(sample_rate=SAMPLE_RATE, device_index=args.device)
 
 
 
