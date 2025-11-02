@@ -41,6 +41,12 @@ HUD_SMOOTH = 0.2
 
 MUSIC_FILE = "music.mp3"
 
+calib = {
+    "Left":  {"y_min": 1.0, "y_max": 0.0},
+    "Right": {"y_min": 1.0, "y_max": 0.0},
+}
+CALIB_DECAY = 0.002  # lets the range relax slowly over time
+
 # =============================
 # Simple 4-pole Low-Pass filter
 # =============================
@@ -92,6 +98,25 @@ def clamp01(x): return max(0.0, min(1.0, x))
 def lerp(a,b,t): return a + (b-a)*t
 def norm_to_range(v_norm, lo, hi): return lerp(lo, hi, clamp01(v_norm))
 def y_to_param(y_norm): return clamp01(1.0 - y_norm)  # top=1
+
+def clamp01(x): return max(0.0, min(1.0, x))
+
+def y_to_param_adaptive(label, y_tip):
+    # Update running min/max
+    c = calib[label]
+    # small decay so range doesn?t lock-in forever
+    c["y_min"] = max(0.0, c["y_min"] + CALIB_DECAY)
+    c["y_max"] = min(1.0, c["y_max"] - CALIB_DECAY)
+    c["y_min"] = min(c["y_min"], y_tip)
+    c["y_max"] = max(c["y_max"], y_tip)
+
+    # Map fingertip to 0..1 using the observed range,
+    # then invert so top=1, bottom=0
+    lo, hi = c["y_min"], c["y_max"]
+    if hi - lo < 1e-3:  # avoid divide-by-zero at startup
+        return 0.5
+    v = (y_tip - lo) / (hi - lo)    # 0 at min (highest), 1 at max (lowest)
+    return clamp01(1.0 - v)
 
 # =============================
 # Music Player (resampling + LPF)
@@ -230,9 +255,9 @@ def draw_ui(canvas, left_v, right_v, num_hands, rate, cutoff, have_sd, have_pydu
     card_x = (W - card_w) // 2
     card_y = 40
     cv2.rectangle(canvas, (card_x, card_y), (card_x+card_w, card_y+card_h), (235,240,235), -1, cv2.LINE_AA)
-    draw_centered_text(canvas, "ⓘ  How to Use", (W//2, card_y+35), 1.0, FG_DARK, 2)
-    draw_centered_text(canvas, "Left Hand: pinch thumb & index to control pitch", (W//2, card_y+70), 0.6, FG_MID, 1)
-    draw_centered_text(canvas, "Right Hand: pinch thumb & index to control low-pass cutoff", (W//2, card_y+95), 0.6, FG_MID, 1)
+    draw_centered_text(canvas, "How to Use", (W//2, card_y+35), 1.0, FG_DARK, 2)
+    draw_centered_text(canvas, "Left Hand: pinch to control playback rate", (W//2, card_y+70), 0.6, FG_MID, 1)
+    draw_centered_text(canvas, "Right Hand: pinch to control low-pass cutoff", (W//2, card_y+95), 0.6, FG_MID, 1)
 
     # meters
     bar_top, bar_bot = 120, H-110
@@ -245,7 +270,7 @@ def draw_ui(canvas, left_v, right_v, num_hands, rate, cutoff, have_sd, have_pydu
     # left labels
     draw_centered_text(canvas, "Left Hand", (left_x+bar_w+200, H//2 - 40), 1.0, FG_MID, 2)
     draw_centered_text(canvas, f"{int(round(left_v*100))}%", (left_x+bar_w+200, H//2+10), 2.2, ACCENT, 6)
-    draw_centered_text(canvas, "Pitch Control", (left_x+bar_w+200, H//2+60), 0.9, FG_DARK, 2)
+    draw_centered_text(canvas, "Playback Rate", (left_x+bar_w+200, H//2+60), 0.9, FG_DARK, 2)
 
     # right labels
     draw_centered_text(canvas, "Right Hand", (right_x-200, H//2 - 40), 1.0, FG_MID, 2)
@@ -253,8 +278,8 @@ def draw_ui(canvas, left_v, right_v, num_hands, rate, cutoff, have_sd, have_pydu
     draw_centered_text(canvas, "Low Pass Filter", (right_x-200, H//2+60), 0.9, FG_DARK, 2)
 
     # bottom status line
-    cv2.putText(canvas, f"Playback Rate: {rate:0.2f}x", (20, H-65), cv2.FONT_HERSHEY_SIMPLEX, 0.9, FG_DARK, 2, cv2.LINE_AA)
-    cv2.putText(canvas, f"LPF Cutoff (Hz): {cutoff:6.1f}", (20, H-25), cv2.FONT_HERSHEY_SIMPLEX, 0.9, FG_DARK, 2, cv2.LINE_AA)
+    # cv2.putText(canvas, f"Playback Rate: {rate:0.2f}x", (20, H-65), cv2.FONT_HERSHEY_SIMPLEX, 0.9, FG_DARK, 2, cv2.LINE_AA)
+    # cv2.putText(canvas, f"LPF Cutoff (Hz): {cutoff:6.1f}", (20, H-25), cv2.FONT_HERSHEY_SIMPLEX, 0.9, FG_DARK, 2, cv2.LINE_AA)
 
     if not have_sd:
         cv2.putText(canvas, "Audio OFF (install 'sounddevice')", (W-400, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 120, 255), 2, cv2.LINE_AA)
@@ -262,8 +287,8 @@ def draw_ui(canvas, left_v, right_v, num_hands, rate, cutoff, have_sd, have_pydu
         cv2.putText(canvas, "MP3 decode OFF (install 'pydub' + ffmpeg)", (W-520, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 120, 255), 2, cv2.LINE_AA)
 
     cv2.putText(canvas, f"FPS: {int(fps)}", (W-140, H-20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (80, 80, 80), 2, cv2.LINE_AA)
-    if num_hands < 2:
-        draw_centered_text(canvas, "Show BOTH hands (Left=Rate, Right=LPF)!", (W//2, 95), 0.9, (0, 0, 255), 2)
+    # if num_hands < 2:s
+        # draw_centered_text(canvas, "Show BOTH hands (Left=Rate, Right=LPF)!", (W//2, 95), 0.9, (0, 0, 255), 2)
 
 # =============================
 # Main (vision + control)
@@ -315,14 +340,17 @@ def main():
             num_hands = 0
 
             if results.multi_hand_landmarks:
-                num_hands = len(results.multi_hand_landmarks)
                 for hand_lms, handed in zip(results.multi_hand_landmarks, results.multi_handedness):
-                    label = handed.classification[0].label  # "Left" or "Right"
-                    y_norm = hand_lms.landmark[8].y
+                    label = handed.classification[0].label  # "Left"/"Right"
+                    y_tip = hand_lms.landmark[8].y          # index fingertip
+
+                    v = y_to_param_adaptive(label, y_tip)   # 0..1 with full usable travel
+
                     if label == "Left":
-                        left_y = y_norm
-                    elif label == "Right":
-                        right_y = y_norm
+                        params.playback_rate = norm_to_range(v, PLAYBACK_MIN, PLAYBACK_MAX)
+                    else:
+                        params.cutoff = norm_to_range(v, LPF_MIN, LPF_MAX)
+
 
             # Map to parameters
             with params.lock:
