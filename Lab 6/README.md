@@ -293,6 +293,7 @@ subscribe: beacons map states to colors (e.g., red=busy, green=free).
 <img src="proj_docs/pi-1.jpg" width="300"/>
 <img src="proj_docs/pi-2.jpg" width="300"/>
 <img src="proj_docs/pi-3.jpg" width="300"/>
+<img src="proj_docs/pi-4.jpg" width="300"/>
 
 ### 📸 Screenshot of grid 
 <img src="proj_docs/screenshot.png" width="900"/>
