@@ -1,0 +1,81 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>RGB from Pi Proximity</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <link rel="stylesheet" href="/index.css" />
+</head>
+<body>
+  <div class="wrap">
+    <h1>RGB from Proximity</h1>
+    <div class="color-box" id="colorBox"></div>
+
+    <div class="rgb-row">
+      <div class="swatch" id="rSwatch"><span id="rVal">R: 0</span></div>
+      <div class="swatch" id="gSwatch"><span id="gVal">G: 0</span></div>
+      <div class="swatch" id="bSwatch"><span id="bVal">B: 0</span></div>
+    </div>
+
+    <div class="pis" id="piList"></div>
+
+    <div class="foot">
+      <small>Missing Pis use fallback channel values from config.</small>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+    const colorBox = document.getElementById('colorBox');
+    const rSw = document.getElementById('rSwatch');
+    const gSw = document.getElementById('gSwatch');
+    const bSw = document.getElementById('bSwatch');
+    const rVal = document.getElementById('rVal');
+    const gVal = document.getElementById('gVal');
+    const bVal = document.getElementById('bVal');
+    const piList = document.getElementById('piList');
+
+    const state = { active: {}, rgb: {r:0,g:0,b:0} };
+
+    function setSwatches(rgb) {
+      const {r,g,b} = rgb;
+      rVal.textContent = `R: ${r}`;
+      gVal.textContent = `G: ${g}`;
+      bVal.textContent = `B: ${b}`;
+      rSw.style.background = `rgb(${r},0,0)`;
+      gSw.style.background = `rgb(0,${g},0)`;
+      bSw.style.background = `rgb(0,0,${b})`;
+      colorBox.style.background = `rgb(${r}, ${g}, ${b})`;
+    }
+
+    function setPis(active) {
+      piList.innerHTML = '';
+      const entries = Object.keys(active).sort().map(k => [k, active[k]]);
+      if (entries.length === 0) {
+        piList.innerHTML = '<div class="pi-item">No Pi mapping configured</div>';
+        return;
+      }
+      for (const [pi, isOn] of entries) {
+        const el = document.createElement('div');
+        el.className = 'pi-item' + (isOn ? ' on' : ' off');
+        el.textContent = `${pi}: ${isOn ? 'active' : 'inactive (fallback)'}`;
+        piList.appendChild(el);
+      }
+    }
+
+    socket.on('rgb_update', (data) => {
+      if (data.rgb) state.rgb = data.rgb;
+      if (data.active) state.active = data.active;
+      setSwatches(state.rgb);
+      setPis(state.active);
+    });
+
+    // Fetch a snapshot in case we connected before server emitted
+    fetch('/api/snapshot').then(r => r.json()).then(snap => {
+      setSwatches(snap.rgb);
+      setPis(snap.active);
+    });
+  </script>
+</body>
+</html>

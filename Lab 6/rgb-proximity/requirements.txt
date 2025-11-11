@@ -1,0 +1,5 @@
+flask==3.0.0
+flask-socketio==5.3.6
+eventlet==0.36.1
+paho-mqtt==1.6.1
+tomli==2.0.1  # for loading config.example.toml (Py3.11+ has tomllib; this covers Py3.8–3.10)

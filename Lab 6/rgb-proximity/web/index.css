@@ -1,0 +1,31 @@
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 24px;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: #0b0b0c; color: #e7e7ea;
+}
+.wrap { max-width: 720px; margin: 0 auto; }
+h1 { font-size: 24px; margin: 0 0 16px; }
+.color-box {
+  width: 100%; height: 200px; border-radius: 16px;
+  background: #111; border: 1px solid #2a2a2e;
+  box-shadow: inset 0 0 40px rgba(0,0,0,.35);
+}
+.rgb-row {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 12px; margin: 16px 0 12px;
+}
+.swatch {
+  height: 60px; border-radius: 12px; display: grid; place-items: center;
+  background: #16161a; border: 1px solid #2a2a2e; color: #fff;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0,0,0,.6);
+}
+.pis { display: grid; gap: 8px; margin-top: 8px; }
+.pi-item {
+  padding: 10px 12px; border-radius: 10px; border: 1px solid #2a2a2e;
+  background: #131316; font-size: 14px;
+}
+.pi-item.on { border-color: #3ddc84; box-shadow: 0 0 0 2px rgba(61,220,132,.15) inset; }
+.pi-item.off { opacity: .7; }
+.foot { margin-top: 12px; opacity: .7; }
