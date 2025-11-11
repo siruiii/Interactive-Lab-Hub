@@ -382,7 +382,7 @@ They were surprised by how small movements affected group color. They liked the 
 
 **How did sensor events work?**
 ```
-- Our sensors worked through a continuous stream of proximity readings from each APDS-9960, where every Pi translated distance into a color intensity value and published it to the MQTT broker in real time. 
+- Our sensors worked through a continuous stream of proximity readings from each APDS-9960, where every Pi translated distance into a color intensity value and published it to the MQTT broker. 
 - The server combined the latest red, green, and blue inputs to generate a blended color that updated instantly on the web interface. 
 - Each person’s movement directly affected the shared outcome.
 ```
