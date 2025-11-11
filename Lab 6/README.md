@@ -348,9 +348,13 @@ python3 pi/proximity_publisher.py --pi-id pi_blue --host hostname --port 1883 --
 
 **What did they think before trying?**
 ```
-They expected each Pi to work separately. They discovered how hand distance from each sensor affected the mix. When all three moved hands at once, they saw smooth color transitions and tried to match target colors for fun.
-What surprised them?
+- They expected each Pi to work separately. 
+- They discovered how hand distance from each sensor affected the mix. 
+- When all three moved hands at once, they saw smooth color transitions and tried to match target colors for fun.
+```
 
+**What surprised them?**
+```
 They were surprised by how small movements affected group color. They liked the immediacy of seeing everyone’s contribution.
 ```
 
@@ -378,7 +382,9 @@ They were surprised by how small movements affected group color. They liked the 
 
 **How did sensor events work?**
 ```
-Our sensors worked through a continuous stream of proximity readings from each APDS-9960, where every Pi translated distance into a color intensity value and published it to the MQTT broker in real time. The server combined the latest red, green, and blue inputs to generate a blended color that updated instantly on the web interface. Each person’s movement directly affected the shared outcome.
+- Our sensors worked through a continuous stream of proximity readings from each APDS-9960, where every Pi translated distance into a color intensity value and published it to the MQTT broker in real time. 
+- The server combined the latest red, green, and blue inputs to generate a blended color that updated instantly on the web interface. 
+- Each person’s movement directly affected the shared outcome.
 ```
 
 **What would you improve?**
