@@ -1,0 +1,30 @@
+# MQTT broker settings
+mqtt_host = "localhost"   # e.g. "farlab.infosci.cornell.edu"
+mqtt_port = 1883
+mqtt_username = ""        # optional
+mqtt_password = ""        # optional
+mqtt_base_topic = "rgb/proximity"   # server subscribes to rgb/proximity/+
+
+# Map three Pi IDs to channels. IDs must match the publisher's <pi_id>.
+# Channels must be one of: "R", "G", "B"
+[channels]
+pi_red   = "R"
+pi_green = "G"
+pi_blue  = "B"
+
+# Fallback values (0..255) when a Pi is not connected / hasn’t published yet
+fallback_R = 0
+fallback_G = 0
+fallback_B = 0
+
+# Proximity -> brightness mapping (in centimeters)
+# distance <= near_cm -> 255  (max channel)
+# distance >= far_cm  -> 0    (min channel)
+near_cm = 5
+far_cm  = 80
+
+# If true, invert mapping (near -> 0, far -> 255)
+invert = false
+
+# How long (seconds) before a Pi is considered inactive if no messages arrive
+stale_after_seconds = 5.0
