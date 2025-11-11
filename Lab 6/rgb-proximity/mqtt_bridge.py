@@ -1,3 +1,5 @@
+# mqtt_bridge.py — raw-first, inactive=0
+
 import json
 import time
 from threading import Lock
@@ -6,34 +8,35 @@ from typing import Dict
 import paho.mqtt.client as mqtt
 
 DEFAULTS = {
-    "fallback_R": 0,
-    "fallback_G": 0,
-    "fallback_B": 0,
     "near_cm": 5,
     "far_cm": 80,
     "invert": False,
     "stale_after_seconds": 5.0,
     "mqtt_base_topic": "rgb/proximity",
-    "channels": {},  # user should map pi_id -> R/G/B here
+    "channels": {},  # map: pi_id -> "R"/"G"/"B"
 }
+
+def clamp_byte(v):
+    try:
+        v = int(v)
+    except Exception:
+        return None
+    return max(0, min(255, v))
 
 class RGBState:
     def __init__(self, cfg, sio):
-        self.cfg = {**DEFAULTS, **cfg}  # merge defaults
+        self.cfg = {**DEFAULTS, **cfg}
         self.sio = sio
         self.lock = Lock()
 
-        self.fallbacks = {
-            "R": int(self.cfg.get("fallback_R", DEFAULTS["fallback_R"])),
-            "G": int(self.cfg.get("fallback_G", DEFAULTS["fallback_G"])),
-            "B": int(self.cfg.get("fallback_B", DEFAULTS["fallback_B"])),
-        }
+        # current RGB to show on UI
+        self.channel_values = {"R": 0, "G": 0, "B": 0}
 
-        self.channel_values = {"R": self.fallbacks["R"], "G": self.fallbacks["G"], "B": self.fallbacks["B"]}
+        # latest per-pi 0..255 value & last-seen time
+        self.pi_latest_v: Dict[str, int] = {}
         self.pi_last_seen: Dict[str, float] = {}
-        self.pi_latest_cm: Dict[str, float] = {}
 
-        # Build pi_id -> channel map; accept lower/upper case for channels
+        # pi_id -> channel map
         self.pi_to_channel = {}
         for pi_id, ch in (self.cfg.get("channels") or {}).items():
             ch = str(ch).upper()
@@ -54,34 +57,55 @@ class RGBState:
         now = time.time()
         stale_after = float(self.cfg.get("stale_after_seconds", DEFAULTS["stale_after_seconds"]))
 
-        out = {"R": self.fallbacks["R"], "G": self.fallbacks["G"], "B": self.fallbacks["B"]}
+        # start at zeros; inactive Pis will remain 0
+        out = {"R": 0, "G": 0, "B": 0}
         active = {}
 
         for pi_id, channel in self.pi_to_channel.items():
             last_seen = self.pi_last_seen.get(pi_id, 0.0)
             is_active = (now - last_seen) <= stale_after
             active[pi_id] = is_active
-            if is_active:
-                cm = self.pi_latest_cm.get(pi_id)
-                if cm is not None:
-                    out[channel] = self._cm_to_255(cm)
+            if is_active and pi_id in self.pi_latest_v:
+                out[channel] = self.pi_latest_v[pi_id]
 
         self.channel_values = out
         rgb = {"r": out["R"], "g": out["G"], "b": out["B"]}
         self.sio.emit("rgb_update", {"rgb": rgb, "active": active})
 
-    def handle_proximity(self, pi_id: str, proximity_cm: float):
+    def handle_payload(self, pi_id: str, data: dict):
+        # prefer raw if available
+        v = None
+        if "proximity_raw" in data:
+            v = clamp_byte(data["proximity_raw"])
+        elif "proximity_cm" in data:
+            try:
+                cm = float(data["proximity_cm"])
+                v = self._cm_to_255(cm)
+            except Exception:
+                v = None
+
+        if v is None:
+            return
+
         with self.lock:
             self.pi_last_seen[pi_id] = time.time()
-            self.pi_latest_cm[pi_id] = proximity_cm
+            self.pi_latest_v[pi_id] = v
             self._recompute_channels()
 
     def get_current_snapshot(self):
         with self.lock:
             stale_after = float(self.cfg.get("stale_after_seconds", DEFAULTS["stale_after_seconds"]))
-            rgb = {"r": self.channel_values["R"], "g": self.channel_values["G"], "b": self.channel_values["B"]}
-            active = {pi: (time.time() - self.pi_last_seen.get(pi, 0.0) <= stale_after)
-                      for pi in self.pi_to_channel.keys()}
+            now = time.time()
+            # build active map and RGB exactly like _recompute_channels
+            out = {"R": 0, "G": 0, "B": 0}
+            active = {}
+            for pi_id, channel in self.pi_to_channel.items():
+                is_active = (now - self.pi_last_seen.get(pi_id, 0.0)) <= stale_after
+                active[pi_id] = is_active
+                if is_active and pi_id in self.pi_latest_v:
+                    out[channel] = self.pi_latest_v[pi_id]
+
+            rgb = {"r": out["R"], "g": out["G"], "b": out["B"]}
             return {"rgb": rgb, "active": active}
 
 class MQTTBridge:
@@ -97,6 +121,9 @@ class MQTTBridge:
 
         self.client.on_connect = self._on_connect
         self.client.on_message = self._on_message
+        self.client.on_disconnect = lambda c, u, rc: (
+            print(f"[MQTT] Unexpected disconnect rc={rc}; auto-reconnect") if rc != 0 else None
+        )
 
     def _on_connect(self, client, userdata, flags, rc):
         base = str(self.cfg.get("mqtt_base_topic", DEFAULTS["mqtt_base_topic"])).rstrip("/")
@@ -107,31 +134,27 @@ class MQTTBridge:
     def _on_message(self, client, userdata, msg):
         try:
             payload = msg.payload.decode("utf-8", errors="ignore")
-            data = json.loads(payload) if payload.strip().startswith("{") else {"proximity_cm": float(payload)}
+            data = json.loads(payload) if payload.strip().startswith("{") else {}
         except Exception as e:
             print(f"[MQTT] Bad message on {msg.topic}: {e}")
             return
 
+        # topic format: <base>/<pi_id>
         try:
-            base = str(self.cfg.get("mqtt_base_topic", DEFAULTS["mqtt_base_topic"])).rstrip("/")
             pi_id = msg.topic.split("/", 2)[-1]
         except Exception:
             return
 
-        prox = None
-        if "proximity_cm" in data:
-            try:
-                prox = float(data["proximity_cm"])
-            except Exception:
-                pass
-
-        if prox is not None:
-            self.rgb_state.handle_proximity(pi_id, prox)
+        self.rgb_state.handle_payload(pi_id, data)
 
     def start(self):
         host = self.cfg.get("mqtt_host", "localhost")
         port = int(self.cfg.get("mqtt_port", 1883))
-        self.client.connect(host, port, keepalive=30)
+        self.client.reconnect_delay_set(min_delay=1, max_delay=30)
+        try:
+            self.client.connect_async(host, port, keepalive=30)
+        except Exception as e:
+            print(f"[MQTT] connect_async failed immediately: {e}")
         self.client.loop_start()
 
     def stop(self):
