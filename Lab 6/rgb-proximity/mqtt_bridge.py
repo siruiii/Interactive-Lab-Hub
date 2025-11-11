@@ -1,53 +1,62 @@
 import json
 import time
 from threading import Lock
-from typing import Dict, Optional
+from typing import Dict
 
 import paho.mqtt.client as mqtt
 
+DEFAULTS = {
+    "fallback_R": 0,
+    "fallback_G": 0,
+    "fallback_B": 0,
+    "near_cm": 5,
+    "far_cm": 80,
+    "invert": False,
+    "stale_after_seconds": 5.0,
+    "mqtt_base_topic": "rgb/proximity",
+    "channels": {},  # user should map pi_id -> R/G/B here
+}
+
 class RGBState:
     def __init__(self, cfg, sio):
-        self.cfg = cfg
+        self.cfg = {**DEFAULTS, **cfg}  # merge defaults
         self.sio = sio
         self.lock = Lock()
-        # Track last reading for each channel and last-seen timestamps per pi_id
-        self.channel_values = {"R": cfg["fallback_R"], "G": cfg["fallback_G"], "B": cfg["fallback_B"]}
+
+        self.fallbacks = {
+            "R": int(self.cfg.get("fallback_R", DEFAULTS["fallback_R"])),
+            "G": int(self.cfg.get("fallback_G", DEFAULTS["fallback_G"])),
+            "B": int(self.cfg.get("fallback_B", DEFAULTS["fallback_B"])),
+        }
+
+        self.channel_values = {"R": self.fallbacks["R"], "G": self.fallbacks["G"], "B": self.fallbacks["B"]}
         self.pi_last_seen: Dict[str, float] = {}
         self.pi_latest_cm: Dict[str, float] = {}
 
-        # Build pi_id -> channel map from cfg['channels']
+        # Build pi_id -> channel map; accept lower/upper case for channels
         self.pi_to_channel = {}
-        for pi_id, ch in cfg["channels"].items():
-            ch = ch.upper()
-            if ch not in ("R", "G", "B"):
-                raise ValueError(f"Invalid channel '{ch}' for {pi_id}. Must be R/G/B.")
-            self.pi_to_channel[pi_id] = ch
+        for pi_id, ch in (self.cfg.get("channels") or {}).items():
+            ch = str(ch).upper()
+            if ch in ("R", "G", "B"):
+                self.pi_to_channel[str(pi_id)] = ch
 
     def _cm_to_255(self, cm: float) -> int:
-        near_cm = float(self.cfg["near_cm"])
-        far_cm = float(self.cfg["far_cm"])
+        near_cm = float(self.cfg.get("near_cm", DEFAULTS["near_cm"]))
+        far_cm = float(self.cfg.get("far_cm", DEFAULTS["far_cm"]))
         cm = max(min(cm, far_cm), near_cm)
-        # Normalize: near => 1.0, far => 0.0
-        t = 1.0 - (cm - near_cm) / max(far_cm - near_cm, 1e-6)
+        t = 1.0 - (cm - near_cm) / max(far_cm - near_cm, 1e-6)  # near→1, far→0
         val = int(round(255 * t))
-        if self.cfg.get("invert", False):
+        if bool(self.cfg.get("invert", DEFAULTS["invert"])):
             val = 255 - val
         return max(0, min(255, val))
 
     def _recompute_channels(self):
-        """Compute R/G/B with fallbacks for any missing/stale pi."""
         now = time.time()
-        stale_after = float(self.cfg["stale_after_seconds"])
+        stale_after = float(self.cfg.get("stale_after_seconds", DEFAULTS["stale_after_seconds"]))
 
-        # Start with fallbacks
-        out = {
-            "R": self.cfg["fallback_R"],
-            "G": self.cfg["fallback_G"],
-            "B": self.cfg["fallback_B"],
-        }
-
+        out = {"R": self.fallbacks["R"], "G": self.fallbacks["G"], "B": self.fallbacks["B"]}
         active = {}
-        # For each known pi -> channel, if fresh, convert cm -> 0..255
+
         for pi_id, channel in self.pi_to_channel.items():
             last_seen = self.pi_last_seen.get(pi_id, 0.0)
             is_active = (now - last_seen) <= stale_after
@@ -58,9 +67,7 @@ class RGBState:
                     out[channel] = self._cm_to_255(cm)
 
         self.channel_values = out
-        # Also compute combined color
         rgb = {"r": out["R"], "g": out["G"], "b": out["B"]}
-        # Broadcast to web clients
         self.sio.emit("rgb_update", {"rgb": rgb, "active": active})
 
     def handle_proximity(self, pi_id: str, proximity_cm: float):
@@ -71,16 +78,18 @@ class RGBState:
 
     def get_current_snapshot(self):
         with self.lock:
+            stale_after = float(self.cfg.get("stale_after_seconds", DEFAULTS["stale_after_seconds"]))
             rgb = {"r": self.channel_values["R"], "g": self.channel_values["G"], "b": self.channel_values["B"]}
-            active = {pi: (time.time() - self.pi_last_seen.get(pi, 0.0) <= float(self.cfg["stale_after_seconds"]))
+            active = {pi: (time.time() - self.pi_last_seen.get(pi, 0.0) <= stale_after)
                       for pi in self.pi_to_channel.keys()}
             return {"rgb": rgb, "active": active}
 
 class MQTTBridge:
     def __init__(self, cfg, rgb_state: RGBState):
-        self.cfg = cfg
+        self.cfg = {**DEFAULTS, **cfg}
         self.rgb_state = rgb_state
         self.client = mqtt.Client()
+
         user = (self.cfg.get("mqtt_username") or "").strip()
         pw = (self.cfg.get("mqtt_password") or "").strip()
         if user:
@@ -90,7 +99,7 @@ class MQTTBridge:
         self.client.on_message = self._on_message
 
     def _on_connect(self, client, userdata, flags, rc):
-        base = self.cfg["mqtt_base_topic"].rstrip("/")
+        base = str(self.cfg.get("mqtt_base_topic", DEFAULTS["mqtt_base_topic"])).rstrip("/")
         topic = f"{base}/+"
         client.subscribe(topic, qos=0)
         print(f"[MQTT] Connected rc={rc}, subscribed to {topic}")
@@ -103,10 +112,9 @@ class MQTTBridge:
             print(f"[MQTT] Bad message on {msg.topic}: {e}")
             return
 
-        # Expect topic: <base>/<pi_id>
         try:
-            base = self.cfg["mqtt_base_topic"].rstrip("/")
-            pi_id = msg.topic.split("/", 2)[-1]  # after base/
+            base = str(self.cfg.get("mqtt_base_topic", DEFAULTS["mqtt_base_topic"])).rstrip("/")
+            pi_id = msg.topic.split("/", 2)[-1]
         except Exception:
             return
 
@@ -121,7 +129,9 @@ class MQTTBridge:
             self.rgb_state.handle_proximity(pi_id, prox)
 
     def start(self):
-        self.client.connect(self.cfg["mqtt_host"], int(self.cfg["mqtt_port"]), keepalive=30)
+        host = self.cfg.get("mqtt_host", "localhost")
+        port = int(self.cfg.get("mqtt_port", 1883))
+        self.client.connect(host, port, keepalive=30)
         self.client.loop_start()
 
     def stop(self):
