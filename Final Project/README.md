@@ -24,6 +24,7 @@ This project will be done by **Jully Li (hl2568), Weicong Hong (wh528), Feier Su
 **What We’re Building**
 - An RFID-based interactive device that recognizes physical objects. When an object is placed on the dock, the device displays past journals or recorded feelings linked to it.
 - Users can add new voice or text entries, creating a tangible memory system that connects emotions to objects.
+- *Note:* We will first prototype the system using **NFC** instead of RFID, since the TA is providing an NFC kit, and then transition to RFID only if needed.
 
 **Fall-back Plan**
 The project can pivot to use a QR code-based recognition system. Generate Unique QR code for each object using existing python library and decode them via camera. 
