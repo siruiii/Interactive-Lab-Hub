@@ -1,11 +1,10 @@
-import os
-import json
-import threading
-from pathlib import Path
+# app.py (fixed order + resilient MQTT start)
 
+import os
+from pathlib import Path
 from flask import Flask, send_from_directory, jsonify
 from flask_socketio import SocketIO
-import tomli  # use tomllib on Python 3.11+
+import tomli
 
 from mqtt_bridge import MQTTBridge, RGBState
 
@@ -30,11 +29,19 @@ def load_config():
         user_cfg = {}
     return {**DEFAULTS, **user_cfg}
 
+app = Flask(__name__, static_folder="web", static_url_path="")
+# IMPORTANT: define socketio BEFORE using it anywhere else
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 
 cfg = load_config()
-rgb_state = RGBState(cfg, socketio)
+rgb_state = RGBState(cfg, socketio)  # <-- now socketio exists
 mqtt = MQTTBridge(cfg, rgb_state)
-mqtt.start()
+
+# Don't crash if broker is down initially
+try:
+    mqtt.start()
+except Exception as e:
+    print(f"[MQTT] initial connect failed: {e} (continuing; paho will retry)")
 
 @app.route("/")
 def index():
@@ -50,7 +57,6 @@ def snapshot():
 
 @socketio.on("connect")
 def on_connect():
-    # push initial state to the new client
     socketio.emit("rgb_update", rgb_state.get_current_snapshot())
 
 if __name__ == "__main__":
