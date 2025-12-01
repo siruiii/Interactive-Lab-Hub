@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local QR Code Scanner</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Font: Inter -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117; /* Dark background */
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-2xl bg-gray-800 rounded-xl shadow-2xl p-6 md:p-8 text-white">
+        <h1 class="text-3xl font-bold text-center mb-6 text-indigo-400">Local QR Code Tracker (LocalStorage)</h1>
+
+        <!-- Info Display (User ID is now a dummy ID) -->
+        <div id="user-info" class="text-center text-sm mb-4 p-2 bg-gray-700 rounded-lg">
+            <p class="text-gray-400">Local Session ID (Data is saved only on this device):</p>
+            <p id="user-id-display" class="font-mono break-all text-xs mt-1 text-yellow-300">local-user-session-1234</p>
+        </div>
+        
+        <!-- Video Feed Container -->
+        <div class="relative w-full aspect-video bg-black rounded-lg overflow-hidden shadow-inner mb-6">
+            <video id="video" class="w-full h-full object-cover" autoplay playsinline></video>
+            <canvas id="canvas" class="hidden"></canvas>
+            <div id="loading-message" class="absolute inset-0 flex items-center justify-center bg-gray-900/90 text-xl font-semibold">
+                Loading camera... Please grant permission.
+            </div>
+            <!-- Scanner Visual -->
+            <div id="scanner-frame" class="absolute inset-0 border-4 border-dashed border-red-500 opacity-0 transition-opacity duration-300"></div>
+        </div>
+
+        <!-- Status and Result Display -->
+        <div class="space-y-4">
+            <div id="status-message" class="p-3 bg-indigo-900/50 text-indigo-300 rounded-lg text-sm text-center font-semibold">
+                Initializing local storage and waiting for camera stream...
+            </div>
+            
+            <!-- Scanned ID and Uniqueness Tag -->
+            <div id="result-display" class="p-4 rounded-lg border-2 border-gray-700 hidden">
+                <p class="text-lg font-medium text-gray-300 mb-1">Current QR ID:</p>
+                <code id="qr-id" class="block p-2 text-base font-mono break-all bg-gray-700 rounded-md text-green-300">N/A</code>
+                <p id="uniqueness-tag" class="text-sm mt-2 font-semibold"></p>
+            </div>
+
+            <!-- Messages Section -->
+            <div id="messages-section" class="border-t border-gray-700 pt-4 hidden">
+                <h2 class="text-xl font-bold mb-3 text-indigo-300">Messages (Stored Locally)</h2>
+                <div id="message-container" class="max-h-60 overflow-y-auto p-3 bg-gray-700 rounded-lg space-y-3">
+                    <ul id="message-list" class="space-y-2">
+                        <!-- Messages will be rendered here -->
+                    </ul>
+                    <p id="no-messages" class="text-gray-400 text-sm italic text-center">No messages yet. Send the first one!</p>
+                </div>
+
+                <!-- Message Input -->
+                <div class="flex mt-3 space-x-2">
+                    <input type="text" id="message-input" placeholder="Type a message..."
+                           class="flex-grow p-2 rounded-lg bg-gray-900 border border-gray-700 focus:ring-indigo-500 focus:border-indigo-500 text-sm text-white disabled:opacity-50"
+                           disabled>
+                    <button id="send-button"
+                            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-md disabled:bg-gray-600 disabled:cursor-not-allowed"
+                            disabled>
+                        Send
+                    </button>
+                </div>
+                <p id="message-error" class="text-red-400 text-xs mt-1 hidden">Message cannot be empty.</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Global DOM Elements
+        const video = document.getElementById('video');
+        const canvasElement = document.getElementById('canvas');
+        const canvas = canvasElement.getContext('2d', { willReadFrequently: true });
+        const loadingMessage = document.getElementById('loading-message');
+        const statusMessage = document.getElementById('status-message');
+        const resultDisplay = document.getElementById('result-display');
+        const qrIdDisplay = document.getElementById('qr-id');
+        const uniquenessTag = document.getElementById('uniqueness-tag');
+        const scannerFrame = document.getElementById('scanner-frame');
+        const messageList = document.getElementById('message-list');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const messagesSection = document.getElementById('messages-section');
+        const noMessages = document.getElementById('no-messages');
+        const messageError = document.getElementById('message-error');
+        
+        // Local State
+        const LOCAL_STORAGE_KEY = 'qr_scanner_messages_data';
+        const LOCAL_USER_ID = 'local-user-session-1234'; // Dummy ID for local messages
+        let qrData = {}; // In-memory storage of all scanned data
+        let lastScannedId = null;
+        let isAppReady = false;
+
+        // --- Local Storage Functions ---
+
+        function loadLocalData() {
+            try {
+                const storedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+                qrData = storedData ? JSON.parse(storedData) : {};
+                statusMessage.textContent = `Loaded ${Object.keys(qrData).length} unique codes from local storage.`;
+            } catch (error) {
+                console.error("Error loading data from localStorage:", error);
+                statusMessage.textContent = 'Error loading local data. Starting fresh.';
+                qrData = {};
+            }
+        }
+
+        function saveLocalData() {
+            try {
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(qrData));
+            } catch (error) {
+                console.error("Error saving data to localStorage:", error);
+                statusMessage.textContent = 'Warning: Could not save data to local storage!';
+            }
+        }
+
+        // --- Message & Scan Handling ---
+
+        function renderMessages(messages) {
+            messageList.innerHTML = ''; 
+            
+            if (!messages || messages.length === 0) {
+                noMessages.classList.remove('hidden');
+                return;
+            }
+            noMessages.classList.add('hidden');
+
+            messages.sort((a, b) => new Date(a.timestamp || 0) - new Date(b.timestamp || 0));
+
+            messages.forEach(msg => {
+                const isMine = msg.senderId === LOCAL_USER_ID;
+                
+                let timeStr = 'Time unknown';
+                try {
+                    timeStr = new Date(msg.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                } catch (e) {
+                    // Handle invalid timestamp format gracefully
+                }
+
+                const messageItem = document.createElement('li');
+                messageItem.className = `flex ${isMine ? 'justify-end' : 'justify-start'}`;
+                
+                messageItem.innerHTML = `
+                    <div class="max-w-xs p-3 rounded-xl shadow-md ${isMine ? 'bg-indigo-500 text-white rounded-br-none' : 'bg-gray-600 text-gray-100 rounded-tl-none'}">
+                        <p class="text-xs font-medium ${isMine ? 'text-indigo-200' : 'text-gray-300'}">User: ${msg.senderId}</p>
+                        <p class="text-sm my-1">${msg.text}</p>
+                        <p class="text-xs text-right opacity-75">${timeStr}</p>
+                    </div>
+                `;
+                messageList.appendChild(messageItem);
+            });
+
+            const container = document.getElementById('message-container');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function sendMessage() {
+            if (!lastScannedId || !isAppReady) return;
+
+            const text = messageInput.value.trim();
+            if (text === '') {
+                messageError.classList.remove('hidden');
+                setTimeout(() => messageError.classList.add('hidden'), 2000);
+                return;
+            }
+            messageError.classList.add('hidden');
+
+            const message = {
+                text: text,
+                senderId: LOCAL_USER_ID,
+                timestamp: new Date().toISOString(),
+            };
+            
+            // Append message to the in-memory structure
+            if (qrData[lastScannedId]) {
+                qrData[lastScannedId].messages.push(message);
+                qrData[lastScannedId].lastScannedAt = message.timestamp;
+            }
+            
+            // Update UI and save to local storage
+            renderMessages(qrData[lastScannedId].messages);
+            saveLocalData();
+            
+            messageInput.value = ''; // Clear input
+        }
+
+        function handleNewScan(id) {
+            lastScannedId = id;
+            qrIdDisplay.textContent = id;
+            resultDisplay.classList.remove('hidden');
+            messagesSection.classList.remove('hidden');
+            
+            let isNew = false;
+            
+            if (!qrData[id]) {
+                // NEW Unique ID
+                isNew = true;
+                qrData[id] = {
+                    qrCodeContent: id,
+                    scannedBy: LOCAL_USER_ID,
+                    scannedAt: new Date().toISOString(),
+                    messages: [], // Initialize with an empty array
+                    lastScannedAt: new Date().toISOString()
+                };
+            }
+            
+            const data = qrData[id];
+
+            if (isNew) {
+                uniquenessTag.className = 'text-sm mt-2 font-semibold p-2 rounded-lg text-yellow-400 bg-yellow-900/50';
+                uniquenessTag.textContent = 'NEW UNIQUE ID! Initializing local thread.';
+                statusMessage.textContent = 'New unique ID registered locally. Start sending messages.';
+            } else {
+                uniquenessTag.className = 'text-sm mt-2 font-semibold p-2 rounded-lg text-green-400 bg-green-900/50';
+                uniquenessTag.textContent = `Scanned previously on ${new Date(data.scannedAt).toLocaleDateString()}.`;
+                statusMessage.textContent = 'QR Code found! Loaded existing local messages.';
+            }
+            
+            // Re-render UI based on in-memory data
+            renderMessages(data.messages);
+            saveLocalData();
+        }
+        
+        // --- Camera and Scanning Logic ---
+        
+        async function startCamera() {
+            try {
+                // Request 'environment' facing mode for mobile devices
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                video.srcObject = stream;
+                
+                await new Promise(resolve => {
+                    video.onloadedmetadata = () => {
+                        video.play();
+                        resolve();
+                    };
+                });
+                
+                canvasElement.height = video.videoHeight;
+                canvasElement.width = video.videoWidth;
+                
+                loadingMessage.classList.add('hidden');
+                isAppReady = true;
+                statusMessage.textContent = 'Camera stream started. Scanning for QR codes...';
+                
+                // Add event listener for sending messages
+                sendButton.addEventListener('click', sendMessage);
+                messageInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        sendMessage();
+                    }
+                });
+                messageInput.disabled = false;
+                sendButton.disabled = false;
+
+                requestAnimationFrame(tick);
+
+            } catch (err) {
+                console.error("Camera access error:", err);
+                loadingMessage.textContent = `Error accessing camera: ${err.name}. You must run this file using a local web server (or over HTTPS) to enable camera access.`;
+            }
+        }
+        
+        function tick() {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+                const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
+                
+                const code = window.jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: "dontInvert",
+                });
+
+                if (code) {
+                    if (code.data && code.data !== lastScannedId) {
+                        handleNewScan(code.data);
+                        scannerFrame.classList.remove('opacity-0');
+                        scannerFrame.style.borderColor = '#4ADE80'; 
+                    } else if (code.data === lastScannedId) {
+                        scannerFrame.classList.remove('opacity-0');
+                        scannerFrame.style.borderColor = '#6366F1'; 
+                    }
+                    
+                    // Draw bounding box (optional, for visual feedback)
+                    drawLine(code.location.topLeftCorner, code.location.topRightCorner, "#FF3B58");
+                    drawLine(code.location.topRightCorner, code.location.bottomRightCorner, "#FF3B58");
+                    drawLine(code.location.bottomRightCorner, code.location.bottomLeftCorner, "#FF3B58");
+                    drawLine(code.location.bottomLeftCorner, code.location.topLeftCorner, "#FF3B58");
+
+                } else {
+                    if (!lastScannedId) {
+                       statusMessage.textContent = 'Scanning... Position a QR code in the frame.';
+                    }
+                    scannerFrame.classList.add('opacity-0');
+                }
+            } else if (video.readyState < video.HAVE_ENOUGH_DATA) {
+                statusMessage.textContent = 'Waiting for camera data...';
+            }
+
+            requestAnimationFrame(tick);
+        }
+
+        function drawLine(begin, end, color) {
+            canvas.beginPath();
+            canvas.moveTo(begin.x, begin.y);
+            canvas.lineTo(end.x, end.y);
+            canvas.lineWidth = 4;
+            canvas.strokeStyle = color;
+            canvas.stroke();
+        }
+
+        // Initialize App on load
+        window.onload = function() {
+            loadLocalData();
+            startCamera();
+        };
+
+    </script>
+    
+    <!-- jsQR Library (Global Scope) -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.1.1/dist/jsQR.min.js"></script>
+
+</body>
+</html>
