@@ -18,13 +18,14 @@
 <body class="min-h-screen flex items-center justify-center p-4">
 
     <div class="w-full max-w-2xl bg-gray-800 rounded-xl shadow-2xl p-6 md:p-8 text-white">
-        <h1 class="text-3xl font-bold text-center mb-6 text-indigo-400">Local QR Code Tracker (LocalStorage)</h1>
+        <h1 class="text-3xl fonst-bold text-center mb-6 text-indigo-400">
+            Digital Fortune Cookie </h1>
 
         <!-- Info Display (User ID is now a dummy ID) -->
-        <div id="user-info" class="text-center text-sm mb-4 p-2 bg-gray-700 rounded-lg">
+        <!-- <div id="user-info" class="text-center text-sm mb-4 p-2 bg-gray-700 rounded-lg">
             <p class="text-gray-400">Local Session ID (Data is saved only on this device):</p>
             <p id="user-id-display" class="font-mono break-all text-xs mt-1 text-yellow-300">local-user-session-1234</p>
-        </div>
+        </div> -->
         
         <!-- Video Feed Container -->
         <div class="relative w-full aspect-video bg-black rounded-lg overflow-hidden shadow-inner mb-6">
@@ -45,14 +46,14 @@
             
             <!-- Scanned ID and Uniqueness Tag -->
             <div id="result-display" class="p-4 rounded-lg border-2 border-gray-700 hidden">
-                <p class="text-lg font-medium text-gray-300 mb-1">Current QR ID:</p>
+                <p class="text-lg font-medium text-gray-300 mb-1">Current Cookie ID:</p>
                 <code id="qr-id" class="block p-2 text-base font-mono break-all bg-gray-700 rounded-md text-green-300">N/A</code>
                 <p id="uniqueness-tag" class="text-sm mt-2 font-semibold"></p>
             </div>
 
             <!-- Messages Section -->
             <div id="messages-section" class="border-t border-gray-700 pt-4 hidden">
-                <h2 class="text-xl font-bold mb-3 text-indigo-300">Messages (Stored Locally)</h2>
+                <h2 class="text-xl font-bold mb-3 text-indigo-300">Messages</h2>
                 <div id="message-container" class="max-h-60 overflow-y-auto p-3 bg-gray-700 rounded-lg space-y-3">
                     <ul id="message-list" class="space-y-2">
                         <!-- Messages will be rendered here -->

@@ -8,7 +8,7 @@ from escpos.printer import Usb
 try:
     # 1. Connect to the USB Printer (Replace with your actual VID/PID)
     # The 'in_ep' and 'out_ep' might also be necessary. Check your printer manual or trial and error.
-    p = Usb(0x04b8, 0x0202, 0, 0x81, 0x02) # Example: Epson TM-T88V IDs
+    p = Usb(0x0416, 0x5011) # Example: Epson TM-T88V IDs
 
     # 2. Initialize the Printer
     p.set(align='center', font='b', height=1, width=1)
