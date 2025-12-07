@@ -7,7 +7,7 @@ from adafruit_apds9960.apds9960 import APDS9960
 from pygame import mixer # Import the mixer module from pygame
 
 # --- Configuration ---
-AUDIO_FILE = "ding-dong.wav" 
+AUDIO_FILE = "fairy.mp3" 
 PROXIMITY_THRESHOLD = 150 
 # Volume setting: 0.5 equals 50%
 SOUND_VOLUME = 0.5 
