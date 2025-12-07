@@ -1,51 +1,27 @@
-import win32print
-import win32api
+from escpos.printer import Usb
 
-# --- The content to be printed, using ESC/POS commands ---
+# --- The content to be printed, using standard text and commands ---
 
-# We construct the receipt data clearly with line breaks.
-data_to_print_bytes = (
-    b'\x1B\x40'          # 1. Initialize Printer (ESC @) - Resets settings.
-    
-    # --- Data to Print ---
-    b'Hello World'       # Your main text
-    b'\x0A'              # **New Line / Line Feed (Required)**
-    b'\x0A'  # Example Separator
-    b'\x0A'              # New Line
-    b'\x0A\x0A\x0A\x0A'  # 2. Add extra Line Feeds to push paper out
-    
-    # --- Cut Command ---
-    b'\x1D\x56\x01'      # 3. Partial Cut (GS V 1)
-)
-
+# Initialize the printer (assuming a USB connection).
+# You may need to find your printer's correct USB Vendor (VID) and Product (PID) IDs.
+# Run 'lsusb' in the terminal to find them (e.g., 0x04b8, 0x0202).
 try:
-    # 1. Get the default printer name (POS-80)
-    default_printer = win32print.GetDefaultPrinter()
+    # 1. Connect to the USB Printer (Replace with your actual VID/PID)
+    # The 'in_ep' and 'out_ep' might also be necessary. Check your printer manual or trial and error.
+    p = Usb(0x04b8, 0x0202, 0, 0x81, 0x02) # Example: Epson TM-T88V IDs
+
+    # 2. Initialize the Printer
+    p.set(align='center', font='b', height=1, width=1)
     
-    # 2. Open a printer handle
-    hPrinter = win32print.OpenPrinter(default_printer)
+    # 3. Print Content
+    p.text("Hello World\n")
+    p.text("\n\n\n\n") # Extra lines for spacing
     
-    # 3. Start a document job (still using "RAW" data type)
-    hJob = win32print.StartDocPrinter(
-        hPrinter, 
-        1, 
-        ("POS Hello World Receipt Fixed", None, "RAW") 
-    )
+    # 4. Perform Partial Cut (The library handles the raw command for you)
+    p.cut()
     
-    # 4. Start a page
-    win32print.StartPagePrinter(hPrinter)
-    
-    # 5. Send the ESC/POS data (must be bytes)
-    win32print.WritePrinter(hPrinter, data_to_print_bytes)
-    
-    # 6. End the page and the document
-    win32print.EndPagePrinter(hPrinter)
-    win32print.EndDocPrinter(hPrinter)
-    
-    # 7. Close the printer handle
-    win32print.ClosePrinter(hPrinter)
-    
-    print(f"Successfully sent revised POS receipt commands to: {default_printer}")
-    
+    print("Successfully printed receipt using python-escpos.")
+
 except Exception as e:
+    # If using USB, you might get a 'No device found' error if the IDs are wrong or permissions are an issue.
     print(f"An error occurred: {e}")
