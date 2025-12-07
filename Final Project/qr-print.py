@@ -11,7 +11,6 @@ JSON_FILE = 'qr_messages.json'
 CAMERA_INDEX = 0  # 0 usually refers to the default webcam
 
 # Set a cooldown period (in seconds) to prevent immediate re-printing
-# of the same code after a successful print.
 COOLDOWN_TIME = 5
 
 def load_messages(file_path):
@@ -20,21 +19,20 @@ def load_messages(file_path):
         with open(file_path, 'r') as f:
             return json.load(f)
     except FileNotFoundError:
-        print(f"🛑 Error: JSON file not found at {file_path}")
+        print(f"--- ERROR: JSON file not found at {file_path}")
         return None
     except json.JSONDecodeError:
-        print(f"🛑 Error: Invalid JSON format in {file_path}")
+        print(f"--- ERROR: Invalid JSON format in {file_path}")
         return None
 
 def print_message(message):
     """Initializes the printer and prints the specified message."""
-    print(f"🖨️ Attempting to print: '{message}'")
+    print(f"[PRINTER] Attempting to connect and print...")
     try:
         # 1. Connect to the USB Printer
         p = Usb(USB_VENDOR_ID, USB_PRODUCT_ID) 
 
         # 2. Initialize the Printer
-        # Set alignment to left for better readability of long messages
         p.set(align='left', font='b', height=1, width=1)
         
         # 3. Print Content
@@ -46,18 +44,16 @@ def print_message(message):
         # 4. Perform Partial Cut
         p.cut()
         
-        print("✅ Successfully printed receipt.")
+        print("[PRINTER] SUCCESS: Message successfully sent to the printer.")
         return True
 
     except Exception as e:
-        print(f"❌ Printing Error: An error occurred: {e}")
-        # Could not connect or print (e.g., printer offline, wrong IDs, permission issue)
+        print(f"[PRINTER] FAILURE: An error occurred during printing: {e}")
         return False
 
 def qr_code_detection_loop(messages_map):
     """
     Main loop to capture video, detect QR codes, and trigger printing.
-    
     """
     if not messages_map:
         return
@@ -66,7 +62,7 @@ def qr_code_detection_loop(messages_map):
     cap = cv2.VideoCapture(CAMERA_INDEX)
 
     if not cap.isOpened():
-        print(f"🛑 Error: Could not open video stream or file at index {CAMERA_INDEX}")
+        print(f"--- ERROR: Could not open video stream or file at index {CAMERA_INDEX}")
         return
 
     # Initialize the QR code detector
@@ -75,29 +71,31 @@ def qr_code_detection_loop(messages_map):
     # Store the last successfully printed code and the time to enforce a cooldown
     last_printed_code = None
     last_print_time = 0
+    print_cooldown_active = False
 
-    print("🎥 Starting camera feed. Press 'q' to quit.")
+    print("--- STARTUP: Starting camera feed. Press 'q' to quit. ---")
 
     while True:
         ret, frame = cap.read()
         if not ret:
-            print("Failed to grab frame.")
+            print("--- ERROR: Failed to grab frame.")
             break
 
         # Detect the QR code and decode its data
         data, bbox, rectified_image = qr_detector.detectAndDecode(frame)
 
         if data:
-            # A QR code was detected
+            # QR code was detected
             current_time = time.time()
             
-            # Check if this code has a corresponding message
+            # Check if the code is known and if the cooldown has passed
             if data in messages_map:
-                # Check if this is a new code OR if the cooldown time has passed
-                if data != last_printed_code or (current_time - last_print_time > COOLDOWN_TIME):
+                print_cooldown_active = (current_time - last_print_time <= COOLDOWN_TIME)
+                
+                if data != last_printed_code or not print_cooldown_active:
                     
                     message_to_print = messages_map[data]
-                    print(f"🔍 Detected QR Code Data: {data}")
+                    print(f"[READ] SUCCESS: Detected QR Code Data: {data}. Matching message found.")
 
                     if print_message(message_to_print):
                         # Update tracking only on successful print
@@ -106,17 +104,21 @@ def qr_code_detection_loop(messages_map):
                     
                 else:
                     # In cooldown period
-                    print(f"⏳ Detected code '{data}', but currently in cooldown period.")
+                    print(f"[READ] DETECTED: Code '{data}' detected again, but still in cooldown period ({COOLDOWN_TIME}s).")
+            
             else:
-                print(f"⚠️ Detected QR code '{data}', but no matching message found in JSON.")
+                # Code detected, but no message match in the JSON
+                print(f"[READ] DETECTED: QR code '{data}' detected, but NO matching message found in JSON.")
 
-            # Optionally draw a bounding box around the QR code
+            # Optional: Draw a bounding box around the QR code
             if bbox is not None:
-                # bbox is a numpy array of shape (1, 4, 2)
                 int_points = bbox[0].astype(int)
                 cv2.polylines(frame, [int_points], True, (0, 255, 0), 2)
-                
         
+        else:
+            # No QR code was detected in the frame
+            print("[READ] Scanning... No QR code detected in this frame.")
+
         # Display the resulting frame
         cv2.imshow('QR Code Detector', frame)
 
@@ -127,7 +129,7 @@ def qr_code_detection_loop(messages_map):
     # When everything done, release the capture and destroy windows
     cap.release()
     cv2.destroyAllWindows()
-    print("Application closed.")
+    print("--- SHUTDOWN: Application closed. ---")
 
 # --- Main execution ---
 if __name__ == "__main__":
