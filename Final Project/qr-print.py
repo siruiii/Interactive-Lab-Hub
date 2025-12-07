@@ -10,8 +10,8 @@ USB_PRODUCT_ID = 0x5011 # Example: 0x0202 (Epson)
 JSON_FILE = 'qr_messages.json'
 CAMERA_INDEX = 0  # 0 usually refers to the default webcam
 
-# Set a cooldown period (in seconds) to prevent immediate re-printing
-COOLDOWN_TIME = 5
+# NOTE: Cooldown is removed since the code will only print ONCE per unique QR code data.
+# COOLDOWN_TIME = 5
 
 def load_messages(file_path):
     """Loads the QR code -> message mapping from a JSON file."""
@@ -27,19 +27,17 @@ def load_messages(file_path):
 
 def print_message(message):
     """Initializes the printer and prints the specified message."""
+    # Using plain ASCII log to prevent UnicodeEncodeError
     print(f"[PRINTER] Attempting to connect and print...")
     try:
         # 1. Connect to the USB Printer
         p = Usb(USB_VENDOR_ID, USB_PRODUCT_ID) 
 
         # 2. Initialize the Printer
-        p.set(align='left', font='b', height=1, width=1)
+        p.set(align='left', font='b', height=0, width=1)
         
         # 3. Print Content
-        p.text("--- QR Code Message ---\n")
         p.text(message + "\n")
-        p.text("-----------------------\n")
-        p.text("\n\n\n\n") # Extra lines for spacing
         
         # 4. Perform Partial Cut
         p.cut()
@@ -48,7 +46,9 @@ def print_message(message):
         return True
 
     except Exception as e:
-        print(f"[PRINTER] FAILURE: An error occurred during printing: {e}")
+        # Ensure the error message 'e' is also handled safely if it contains non-ASCII characters
+        error_msg = str(e).encode('ascii', 'replace').decode('ascii')
+        print(f"[PRINTER] FAILURE: An error occurred during printing: {error_msg}")
         return False
 
 def qr_code_detection_loop(messages_map):
@@ -57,6 +57,9 @@ def qr_code_detection_loop(messages_map):
     """
     if not messages_map:
         return
+
+    # Use a set to store codes that have already been printed once
+    printed_codes = set()
 
     # Initialize video capture
     cap = cv2.VideoCapture(CAMERA_INDEX)
@@ -68,11 +71,7 @@ def qr_code_detection_loop(messages_map):
     # Initialize the QR code detector
     qr_detector = cv2.QRCodeDetector()
     
-    # Store the last successfully printed code and the time to enforce a cooldown
-    last_printed_code = None
-    last_print_time = 0
-    print_cooldown_active = False
-
+    # Use plain ASCII log
     print("--- STARTUP: Starting camera feed. Press 'q' to quit. ---")
 
     while True:
@@ -86,25 +85,23 @@ def qr_code_detection_loop(messages_map):
 
         if data:
             # QR code was detected
-            current_time = time.time()
             
-            # Check if the code is known and if the cooldown has passed
             if data in messages_map:
-                print_cooldown_active = (current_time - last_print_time <= COOLDOWN_TIME)
                 
-                if data != last_printed_code or not print_cooldown_active:
+                if data not in printed_codes:
+                    # This is a NEW, UNPRINTED, and KNOWN QR code
                     
                     message_to_print = messages_map[data]
-                    print(f"[READ] SUCCESS: Detected QR Code Data: {data}. Matching message found.")
+                    # Use plain ASCII log
+                    print(f"[READ] SUCCESS: Detected new QR Code Data: {data}. Matching message found.")
 
                     if print_message(message_to_print):
-                        # Update tracking only on successful print
-                        last_printed_code = data
-                        last_print_time = current_time
-                    
+                        # Add the code to the set only if printing was successful
+                        printed_codes.add(data)
+                        
                 else:
-                    # In cooldown period
-                    print(f"[READ] DETECTED: Code '{data}' detected again, but still in cooldown period ({COOLDOWN_TIME}s).")
+                    # Code is known and was already printed
+                    print(f"[READ] DETECTED: QR code '{data}' detected, but message has already been printed once.")
             
             else:
                 # Code detected, but no message match in the JSON
@@ -117,7 +114,13 @@ def qr_code_detection_loop(messages_map):
         
         else:
             # No QR code was detected in the frame
-            print("[READ] Scanning... No QR code detected in this frame.")
+            # Log this only occasionally to prevent overwhelming the console
+            # pass 
+
+            # Optional: Log if nothing is detected
+            # print("[READ] Scanning... No QR code detected in this frame.")
+            pass
+
 
         # Display the resulting frame
         cv2.imshow('QR Code Detector', frame)
