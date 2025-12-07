@@ -7,7 +7,7 @@ from escpos.printer import Usb
 # Replace with your printer's actual VID/PID
 USB_VENDOR_ID = 0x0416  # Example: 0x04b8 (Epson)
 USB_PRODUCT_ID = 0x5011 # Example: 0x0202 (Epson)
-JSON_FILE = 'qr_messages.json'
+JSON_FILE = 'qr_m.json'
 CAMERA_INDEX = 0  # 0 usually refers to the default webcam
 
 # NOTE: Cooldown is removed since the code will only print ONCE per unique QR code data.
