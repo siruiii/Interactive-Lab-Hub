@@ -24,7 +24,7 @@ RETRY_DELAY = 1.5       # Time (in seconds) to wait between retries
 # --- PROXIMITY & AUDIO CONFIG ---
 AUDIO_FILE = "Music.MP3" 
 PROXIMITY_THRESHOLD = 5
-SOUND_VOLUME = 0.5 
+SOUND_VOLUME = 1 
 
 # ====================================================================
 #                   PRINTER/QR CODE FUNCTIONS
@@ -54,7 +54,7 @@ def print_message(message):
             p = Usb(USB_VENDOR_ID, USB_PRODUCT_ID) 
 
             # 2. Initialize the Printer
-            p.set(align='center', font='b', height=0, width=1)
+            p.set(align='center', font='a', height=0, width=1)
             
             # 3. Print Content
             p.text(message + "\n")
