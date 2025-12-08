@@ -8,7 +8,7 @@ from pygame import mixer # Import the mixer module from pygame
 
 # --- Configuration ---
 AUDIO_FILE = "Music.MP3" 
-PROXIMITY_THRESHOLD = 150 
+PROXIMITY_THRESHOLD =  5
 # Volume setting: 0.5 equals 50%
 SOUND_VOLUME = 0.5 
 # ---------------------

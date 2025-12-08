@@ -34,7 +34,7 @@ def print_message(message):
         p = Usb(USB_VENDOR_ID, USB_PRODUCT_ID) 
 
         # 2. Initialize the Printer
-        p.set(align='left', font='b', height=0, width=1)
+        p.set(align='center', font='b', height=0, width=1)
         
         # 3. Print Content
         p.text(message + "\n")
