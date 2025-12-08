@@ -31,10 +31,30 @@ SOUND_VOLUME = 1
 # ====================================================================
 
 def load_messages(file_path):
-    """Loads the QR code -> message mapping from a JSON file."""
+    """
+    Loads the QR code -> message mapping from a JSON file and processes 
+    the message strings to correctly interpret escape sequences (like \n).
+    """
     try:
         with open(file_path, 'r') as f:
-            return json.load(f)
+            data = json.load(f)
+            
+            # --- FIX: Decode the string values to handle \n correctly ---
+            messages_map = {}
+            for key, value in data.items():
+                # json.loads() is used here to interpret the escaped characters
+                # but since the JSON is already loaded, we must ensure the 
+                # string is processed correctly. A simpler approach is to use 
+                # the 'unicode-escape' decode method if the problem originated 
+                # from an overly escaped file, OR use string.replace.
+                
+                # OPTION 1: Use string replace for clarity on what's being fixed
+                # This fixes the common issue where \n becomes \\n in the file.
+                processed_value = value.replace('\\n', '\n')
+                messages_map[key] = processed_value
+                
+            return messages_map
+            
     except FileNotFoundError:
         print(f"--- ERROR: JSON file not found at {file_path}")
         return None
