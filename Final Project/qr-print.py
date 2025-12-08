@@ -10,6 +10,9 @@ USB_PRODUCT_ID = 0x5011 # Example: 0x0202 (Epson)
 JSON_FILE = 'qr_m.json'
 CAMERA_INDEX = 0  # 0 usually refers to the default webcam
 
+# --- New Printer Retry Configuration ---
+MAX_RETRIES = 3    # Maximum number of times to retry printing on failure
+RETRY_DELAY = 1.5  # Time (in seconds) to wait between retries
 # NOTE: Cooldown is removed since the code will only print ONCE per unique QR code data.
 # COOLDOWN_TIME = 5
 
@@ -26,30 +29,40 @@ def load_messages(file_path):
         return None
 
 def print_message(message):
-    """Initializes the printer and prints the specified message."""
+    """Initializes the printer and prints the specified message with retries."""
     # Using plain ASCII log to prevent UnicodeEncodeError
-    print(f"[PRINTER] Attempting to connect and print...")
-    try:
-        # 1. Connect to the USB Printer
-        p = Usb(USB_VENDOR_ID, USB_PRODUCT_ID) 
+    
+    for attempt in range(MAX_RETRIES):
+        print(f"[PRINTER] Attempting to connect and print (Attempt {attempt + 1}/{MAX_RETRIES})...")
+        try:
+            # 1. Connect to the USB Printer
+            # The Usb() object must be created inside the loop to re-attempt connection
+            p = Usb(USB_VENDOR_ID, USB_PRODUCT_ID) 
 
-        # 2. Initialize the Printer
-        p.set(align='center', font='b', height=0, width=1)
-        
-        # 3. Print Content
-        p.text(message + "\n")
-        
-        # 4. Perform Partial Cut
-        p.cut()
-        
-        print("[PRINTER] SUCCESS: Message successfully sent to the printer.")
-        return True
+            # 2. Initialize the Printer
+            p.set(align='center', font='b', height=0, width=1)
+            
+            # 3. Print Content
+            p.text(message + "\n")
+            
+            # 4. Perform Partial Cut
+            p.cut()
+            
+            print("[PRINTER] SUCCESS: Message successfully sent to the printer.")
+            return True # Success, exit function
 
-    except Exception as e:
-        # Ensure the error message 'e' is also handled safely if it contains non-ASCII characters
-        error_msg = str(e).encode('ascii', 'replace').decode('ascii')
-        print(f"[PRINTER] FAILURE: An error occurred during printing: {error_msg}")
-        return False
+        except Exception as e:
+            # Ensure the error message 'e' is also handled safely if it contains non-ASCII characters
+            error_msg = str(e).encode('ascii', 'replace').decode('ascii')
+            print(f"[PRINTER] WARNING: Print attempt failed: {error_msg}")
+            
+            if attempt < MAX_RETRIES - 1:
+                # Wait before retrying
+                time.sleep(RETRY_DELAY)
+            
+    # If the loop completes without a successful return (True)
+    print(f"[PRINTER] FAILURE: All {MAX_RETRIES} print attempts failed.")
+    return False
 
 def qr_code_detection_loop(messages_map):
     """
@@ -95,6 +108,7 @@ def qr_code_detection_loop(messages_map):
                     # Use plain ASCII log
                     print(f"[READ] SUCCESS: Detected new QR Code Data: {data}. Matching message found.")
 
+                    # Use the revised print_message function
                     if print_message(message_to_print):
                         # Add the code to the set only if printing was successful
                         printed_codes.add(data)
