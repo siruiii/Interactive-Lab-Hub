@@ -83,18 +83,24 @@ The installation creates a shared, communal experience rooted in chance, ritual,
 
 ### Parts Needed
 - Raspberry Pi
-- Proximity Sensor
-- Thermal Printer
-- Web Camera with Microphone
+- External Monitor
+- USB Camera with Microphone
 - Physical Capsules / Fortune Cookie Holders
 - Printed Unique QR Codes
+- Phones (Scanning the QR Codes)
 
 ## Functioning Project
 ### 1. Wiring Set-up
 The proximity sensor was connected to the Raspberry Pi using a Qwiic cable. The web camera and thermal printer are both connected directly via USB interfaces. The USB connection serves two purposes: it supplies power to each device and enables digital data communication. This setup ensured stable integration of all peripherals with minimal wiring complexity.
 
-
 ### 2. Major Components
+#### Fortune Cookie Quotes
+We designed and conducted a survey gathering the quotes/messages from Cornell Tech Community. We sent it through the WhatsApp and Slack Channels:
+
+The survey we sent out: https://docs.google.com/forms/d/e/1FAIpQLScC0TNDbWO2k46hP5G_KslvqWoStc4n5jWPhtOBe9JrEsa58w/viewform?usp=header
+
+The quotes we gathered: https://docs.google.com/spreadsheets/d/1ByaXTgVIr-SSIR2pKf4Vdzvb2Sr2KhHNCAHfORQeKEk/edit?resourcekey=&gid=2030077382#gid=2030077382
+
 #### Fortune Cookie Capsule
 Each cookie contains a unique QR Code generated randomly by using the website (https://randomqr.com/)
 
@@ -122,21 +128,23 @@ We used pins to control and guide the capsule’s dropping path inside the vendi
 
 This is what the final capsule vending machine looks like externally, featuring a rotating knob and a capsule exit. We also added labels to the box to guide users through the process of retrieving a fortune cookie.
 
-Interaction Flow:
-1. The user rotates the knob.
-2. A capsule drops from the top of the machine to the exit at the bottom.
-3. The user picks up the capsule from the exit, which triggers the **sensor** installed at the exit.
-
-We used APDS-9960 proximity sensor as a non-contact trigger that detects user presence. When a person approaches the installation, the sensor detects the change in proximityt, crosses a defined threshold, and triggers an audio cue. This interaction enhances the system’s responsiveness and signals to users that the device is active and ready for engagement.
-
 <p align="center">
   <img src="proj_docs/Cookie Vending Machine.jpg" width="55%"><br>
   <em>Final Capsule Vending Machine</em>
 </p>
 
+Interaction Flow:
+1. The user rotates the knob.
+2. A capsule drops from the top of the machine to the exit at the bottom.
+3. The user picks up the capsule from the exit, which triggers the **sensor** installed at the exit.
+
+We used **APDS-9960 proximity sensor** as a non-contact trigger that detects user presence. When a person approaches the installation, the sensor detects the change in proximityt, crosses a defined threshold, and triggers an audio cue. This interaction enhances the system’s responsiveness and signals to users that the device is active and ready for engagement.
 
 #### Thermal Printer 
 The last step of the device interaction is the fortune quote being printed out by scanning the QR code inside the capsule using a USB camera. 
+
+##### Explanation of the code
+Source code: https://github.com/siruiii/Interactive-Lab-Hub/blob/27a8b05f32b32ca353572faf12a2f729e8e06683/Final%20Project/fc.py
 
 From a technical perspective, it works as follows:
 1. Camera input continuously streams video frames.
@@ -145,11 +153,6 @@ From a technical perspective, it works as follows:
 4. A successful match triggers a print command.
 5. The thermal printer receives ESC/POS instructions over USB.
 6. The printer outputs a physical receipt containing the linked message.
-
-Each QR code is logged as “printed” to prevent duplicate outputs.
-
-##### Explanation of the code
-Source code: https://github.com/siruiii/Interactive-Lab-Hub/blob/27a8b05f32b32ca353572faf12a2f729e8e06683/Final%20Project/fc.py
 
 **[QR Code Detection]** The camera continuously captures video frames using OpenCV `(cv2.VideoCapture)`. Each frame is processed in real time by OpenCV’s QRCodeDetector, which analyzes the image for QR code patterns.
 ```python
@@ -224,7 +227,7 @@ Final thermal printer setup with pre-cut holes for printing fortune quotes.
 </p>
 
 ### Physical Enclosures
-Two major components were used for our final installation. Fortune Cookie which were served as 
+Two major components were used for our final installation:
 
 #### Fortune Cookies
 <p align="center">
@@ -331,5 +334,3 @@ Furthermore, we were interested in exploring how the project could be extended. 
 - Ideation
 - 3D printing cookies
 - Final set-up
-
-
